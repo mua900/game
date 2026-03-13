@@ -1,0 +1,9 @@
+build/
+build_debug/
+.vs/
+.idea/
+.vscode/
+imgui.ini
+tmp/
+*.pch
+*.gch
