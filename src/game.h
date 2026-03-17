@@ -4,22 +4,33 @@
 #include "common.h"
 #include "template.h"
 
+#include "input.h"
+
+#include "box2d/box2d.h"
+
 enum GameObjectType {
-    OT_Wall,
-    OT_Player,
-    OT_Enemy,
+    GOT_Wall,
+    GOT_Player,
+    GOT_Enemy,
 };
 
 struct Wall {
     vec2 scale;
+
+    Wall(vec2 scale)
+        : scale(scale)
+    {}
 };
 
 struct Player {
-    float rotation;
+    vec2 velocity = {};
+    float speed = 0;
+    float rotation = {};
 };
 
 struct Enemy {
-    float rotation;
+    vec2 velocity = {};
+    float rotation = {};
 };
 
 struct GameObject {
@@ -33,6 +44,18 @@ struct GameObject {
     };
 
     GameObject()
+    {}
+    GameObject(vec2 position, Wall& wall)
+        : type(GOT_Wall), position(position), wall(wall)
+    {}
+    GameObject(vec2 position, Wall&& wall)
+        : type(GOT_Wall), position(position), wall(wall)
+    {}
+    GameObject(vec2 position, Player& player)
+        : type(GOT_Player), position(position), player(player)
+    {}
+    GameObject(vec2 position, Enemy& enemy)
+        : type(GOT_Enemy), position(position), enemy(enemy)
     {}
 };
 
@@ -54,6 +77,14 @@ struct SpatialGrid {
     int dimension_x;
     int dimension_y;
     DArray<SpatialGridCell> overflow_cells;
+
+    void initialize(int dim_x, int dim_y)
+    {
+        dimension_x = dim_x;
+        dimension_y = dim_y;
+
+        cells = new SpatialGridCell[dim_x * dim_y];
+    }
 
     int size()
     {
@@ -119,11 +150,15 @@ struct SpatialGrid {
 };
 
 struct GameState {
-    BucketList<GameObject> game_objects;
-    SpatialGrid grid;
+    BucketList<GameObject> game_objects = {};
+    SpatialGrid grid = {};
+
+    b2WorldId worldId = {};
+    DArray<b2BodyId> bodies = {};
 
     bool initialize();
-    void update(double delta_time);
+    void cleanup();
+    void update(double delta_time, const Input& input);
     void fixed_update(int ticks_per_second);  // dt is 1 / tps
 
     void add_object(GameObject& obj)

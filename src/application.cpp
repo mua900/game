@@ -3,6 +3,7 @@
 #include <iostream>
 #include <SDL3_image/SDL_image.h>
 #include <SDL3_ttf/SDL_ttf.h>
+#include <SDL3_mixer/SDL_mixer.h>
 
 bool Application::initialize()
 {
@@ -58,6 +59,22 @@ bool Application::initialize()
     if (!m_audio.audio_player.initialize(DESIRED_AUDIO_SAMPLE_RATE, 2, 0.5)) {
         fprintf(stderr, "Failed to initialize audio player: %s\n", SDL_GetError());
         return false;
+    }
+
+    {
+        AudioPlayer2 player;
+
+        if (!MIX_Init())
+        {
+            fprintf(stderr, "Could not initialize SDL mixer library\n");
+            return false;
+        }
+
+        player.simple_player = &m_audio.audio_player;
+        if (!player.create())
+        {
+            return false;
+        }
     }
 
     quit = false;
@@ -163,6 +180,8 @@ bool load_font(Font* font, String_Builder& path, String font_folder, String font
 
 void Application::handle_events()
 {
+    update_keyboard_state();
+
     SDL_Event e = {};
     while (SDL_PollEvent(&e))
     {
@@ -193,7 +212,7 @@ void Application::handle_events()
             }
             case SDL_EVENT_MOUSE_MOTION:
             {
-                m_mouse.flags = SDL_GetMouseState(&m_mouse.pos.x, &m_mouse.pos.y);
+                m_input.mouse.flags = SDL_GetMouseState(&m_input.mouse.pos.x, &m_input.mouse.pos.y);
                 break;
             }
             case SDL_EVENT_WINDOW_RESIZED:
@@ -224,15 +243,25 @@ bool Application::keyboard_input(SDL_KeyboardEvent keyboard)
     return false;
 }
 
+void Application::update_keyboard_state()
+{
+    m_input.keyboard.keys = SDL_GetKeyboardState(&m_input.keyboard.num_keys);
+    m_input.keyboard.mod_state = SDL_GetModState();
+}
+
 void Application::update()
 {
     // update time
     SDL_Time time = SDL_GetTicksNS();
     double time_sec = (double)time / NS_PER_SECONDS;
+    m_delta_time = time - m_time;
+    m_delta_time_seconds = time_sec - m_time_seconds;
     m_time = time;
     m_time_seconds = time_sec;
 
     timeout();
+
+    game_state.update(m_delta_time_seconds, m_input);
 }
 
 void Application::timeout()
@@ -288,7 +317,31 @@ void Application::draw()
 
 void Application::draw_game()
 {
-    // @todo
+    for (auto object : game_state.game_objects)
+    {
+        switch (object.type)
+        {
+            case GOT_Wall:
+            {
+                SDL_FRect area = { object.position.x, object.position.y, 100, 100 };
+                SDL_SetRenderDrawColor(m_window.renderer, 0x55, 0x88, 0x55, 0xff);
+                SDL_RenderFillRect(m_window.renderer, &area);
+                break;
+            }
+            case GOT_Player:
+            {
+                SDL_FRect area = { object.position.x, object.position.y, 50, 50 };
+                SDL_SetRenderDrawColor(m_window.renderer, 0xAA, 0x66, 0x99, 0xff);
+                SDL_RenderFillRect(m_window.renderer, &area);
+
+                break;
+            }
+            case GOT_Enemy:
+            {
+                break;
+            }
+        }
+    }
 }
 
 void Application::draw_ui()
@@ -447,7 +500,7 @@ void Application::render_waveform(vec2 area_center, vec2 area_scale, int frame_c
     #undef BLOCK_SIZE
 }
 
-bool Application::load_audio_file(String path) {
+bool AudioData::load_audio_file(String path) {
     SCOPE_STRING(path, path_c_str);
 
     u8* output_buffer;
@@ -485,13 +538,13 @@ bool Application::load_audio_file(String path) {
         }
     }
 
-    m_audio.audio_data.samples = output_buffer;
-    m_audio.audio_data.channel_count = desired_spec.channels;
-    m_audio.audio_data.format = desired_spec.format;
-    m_audio.audio_data.frequency = desired_spec.freq;
-    m_audio.audio_data.frame_count = output_length / (SDL_AUDIO_BYTESIZE(desired_spec.format) * desired_spec.channels);
+    samples = output_buffer;
+    channel_count = desired_spec.channels;
+    format = desired_spec.format;
+    frequency = desired_spec.freq;
+    frame_count = output_length / (SDL_AUDIO_BYTESIZE(desired_spec.format) * desired_spec.channels);
 
-    ASSERT(m_audio.audio_data.is_in_desired_spec());
+    ASSERT(is_in_desired_spec());
 
     return true;
 }

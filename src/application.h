@@ -5,6 +5,7 @@
 #include "audio.h"
 #include "ui.h"
 #include "game.h"
+#include "input.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
@@ -25,13 +26,6 @@ struct Assets {
     Font font_large = {};
 };
 
-typedef SDL_MouseButtonFlags Mouse_Flags;
-
-struct Mouse_State {
-    vec2 pos;
-    Mouse_Flags flags;
-};
-
 #define NS_PER_SECONDS 1'000'000'000
 
 struct Event_Timeout {
@@ -46,6 +40,7 @@ enum Events {
 
 struct AudioContext {
     AudioPlayer audio_player = {};
+    AudioPlayer2 player = {};
     AudioData audio_data = {};
 };
 
@@ -58,7 +53,7 @@ public:
     ApplicationMode mode = ApplicationMode::AppModeMenu;
 
     Window m_window = {};
-    Mouse_State m_mouse = {};
+    Input m_input = {};
 
     Assets m_assets = {};
     AudioContext m_audio;
@@ -98,7 +93,7 @@ private:
     bool mouse_input();
     bool keyboard_input(SDL_KeyboardEvent keyboard);
 
-    bool load_audio_file(String path);
+    void update_keyboard_state();
 
     Text create_text(String text, Font font, Color color);
 

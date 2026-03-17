@@ -324,8 +324,8 @@ struct BucketList {
 				continue;
 			}
 
-			uint64_t inverse_flags = (~flags) & BUCKET_FLAGS_FULL;
-			int index = pop_lsb(&inverse_flags);
+			u16 inverse_flags = ~flags;
+			int index = lsb_index(inverse_flags);
 			bucket.elements[index] = elem;
 			bucket.occupied_flags |= BIT(index);
 
@@ -352,5 +352,60 @@ struct BucketList {
 		int index = elem_index % BUCKET_SIZE;
 
 		return buckets.get_ref(bucket_index).elements[index];
+	}
+
+	struct Iterator {
+		BucketList<T>* list = {};
+		int bucket_index = 0;
+		int slot_index = 0;
+
+		void next()
+		{
+			for (int i = bucket_index; i < list->buckets.size(); i++)
+			{
+				Bucket& bucket = list->buckets.get_ref(i);
+				auto flags = bucket.occupied_flags;
+				flags &= BUCKET_FLAGS_FULL << (slot_index + 1);  // ignore flags before the point we are looking
+				if (flags != 0)
+				{
+					int index = lsb_index(flags);
+
+					bucket_index = i;
+					slot_index = index;
+					return;
+				}
+				else
+				{
+					slot_index = 0;
+				}
+			}
+
+			bucket_index = list->buckets.size();
+		}
+
+		Iterator& operator++() {
+			next();
+			return *this;
+		}
+
+		T& operator*() {
+			return list->buckets.get_ref(bucket_index).elements[slot_index];
+		}
+
+		bool operator!=(const Iterator& other) const {
+			return bucket_index != other.bucket_index || slot_index != other.slot_index;
+		}
+	};
+
+	Iterator begin()
+	{
+		Iterator it = { this, 0, -1 };
+		it.next();
+		return it;
+	}
+
+	Iterator end()
+	{
+		return { this, buckets.size(), 0 };
 	}
 };

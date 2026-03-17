@@ -43,7 +43,7 @@ static inline unsigned int msvc_leading_zeros(u64 x)
     unsigned long pos = 0;
     unsigned char is_zero = _BitScanReverse64(&pos, x);
     // @note no checking for zero here since we assume non-zero input.
-    return pos;
+    return 63 - pos;
 }
 
 #define POP_COUNT(x)      pop_count(x)
@@ -75,6 +75,9 @@ void panic(char const* const msg);
 
 int pop_lsb(u64* x);
 int pop_msb(u64* x);
+
+int lsb_index(u64 x);
+int msb_index(u64 x);
 
 struct BinaryData {
 	u8* data = nullptr;
@@ -260,6 +263,24 @@ struct vec2 {
         float mag = sqrt(x*x+y*y);
         return vec2(x/mag,y/mag);
     }
+
+    void operator+=(const vec2 other)
+    {
+        x += other.x;
+        y += other.y;
+    }
+
+    void operator-=(const vec2 other)
+    {
+        x -= other.x;
+        y -= other.y;
+    }
+
+    void operator*=(float s)
+    {
+        x *= s;
+        y *= s;
+    }
 };
 
 inline vec2 operator+(const vec2 a, const vec2 b)
@@ -269,6 +290,14 @@ inline vec2 operator+(const vec2 a, const vec2 b)
 inline vec2 operator-(const vec2 a, const vec2 b)
 {
     return vec2(a.x - b.x, a.y - b.y);
+}
+inline vec2 operator*(vec2 v, float s)
+{
+    return vec2(v.x * s, v.y * s);
+}
+inline vec2 operator*(float s, vec2 v)
+{
+    return vec2(v.x * s, v.y * s);
 }
 
 struct Rectangle {

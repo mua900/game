@@ -66,6 +66,16 @@ int pop_msb(u64* x) {
     return index;
 }
 
+int lsb_index(u64 x)
+{
+    return TRAILING_ZEROS(x);
+}
+
+int msb_index(u64 x)
+{
+    return 63 - LEADING_ZEROS(x);
+}
+
 int string_length(const char* cstr) {
     return strlen(cstr);
 }

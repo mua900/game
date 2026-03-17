@@ -44,7 +44,6 @@ set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT g
 add_subdirectory(vendor/SDL EXCLUDE_FROM_ALL)
 
 # SDL_image
-set(SDLIMAGE_VENDORED ON)
 # turn off unused formats
 set(SDLIMAGE_ANI  OFF)
 set(SDLIMAGE_AVIF OFF)
@@ -68,18 +67,27 @@ set(SDLIMAGE_PNG ON)
 
 add_subdirectory(vendor/SDL_image EXCLUDE_FROM_ALL)
 
+# SDL_mixer
+add_subdirectory(vendor/SDL_mixer EXCLUDE_FROM_ALL)
+
 # SDL_ttf
-set(SDLTTF_VENDORED ON)
 add_subdirectory(vendor/SDL_ttf EXCLUDE_FROM_ALL)
+
+# Box 2D
+add_subdirectory(vendor/box2d-3.1.1)
 
 target_include_directories(game PRIVATE vendor/SDL/include/)
 target_include_directories(game PRIVATE vendor/SDL_image/include/)
+target_include_directories(game PRIVATE vendor/SDL_mixer/include)
 target_include_directories(game PRIVATE vendor/SDL_ttf/include/)
+target_include_directories(game PRIVATE vendor/box2d-3.1.1/include)
 
 target_link_libraries(
     game
     PRIVATE
     SDL3::SDL3
     SDL3_image::SDL3_image
+    SDL3_mixer::SDL3_mixer
     SDL3_ttf::SDL3_ttf
+    box2d
 )

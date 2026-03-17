@@ -175,3 +175,32 @@ SDL_AudioStream* create_audio_stream(SDL_AudioDeviceID device, SDL_AudioSpec spe
 
     return stream;
 }
+
+
+bool AudioPlayer2::create() {
+    MIX_Mixer* mix_mixer = MIX_CreateMixerDevice(simple_player->device, nullptr);
+    if (!mix_mixer)
+    {
+        fprintf(stderr, "Couldn't create MIX_Mixer object: %s\n", SDL_GetError());
+        return false;
+    }
+
+    this->mixer = mix_mixer;
+    return true;
+}
+
+void AudioPlayer2::cleanup() {
+    MIX_DestroyMixer(mixer);
+}
+
+bool AudioPlayer2::load_audio(const char* path, bool p_predecode) {
+    MIX_Audio* audio = MIX_LoadAudio(mixer, path, p_predecode);
+    if (!audio)
+    {
+        return false;
+    }
+
+    sounds.add(audio);
+
+    return true;
+}

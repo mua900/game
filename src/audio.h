@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SDL3/SDL.h>
+#include <SDL3_mixer/SDL_mixer.h>
 
 #include "common.h"
 #include "template.h"
@@ -37,6 +38,8 @@ struct AudioData {
     {
         return (samples != nullptr) && (format == DESIRED_AUDIO_FORMAT) && (channel_count == DESIRED_AUDIO_CHANNEL_COUNT) && (frequency == DESIRED_AUDIO_SAMPLE_RATE);
     }
+
+    bool load_audio_file(String path);
 };
 
 // @todo a more complete audio player
@@ -66,4 +69,19 @@ struct AudioPlayer
     double get_volume() const;
     double get_pan() const { return pan; }
     void set_pan(float p) { pan = p; }
+};
+
+// @todo
+struct AudioPlayer2 {
+    AudioPlayer* simple_player;
+    MIX_Mixer* mixer;
+    DArray<MIX_Track*> tracks;
+    DArray<MIX_Audio*> sounds;
+
+    bool create();
+    void cleanup();
+    int add_track();
+    void remove_track(int index);
+    int get_track_count() const { return tracks.size(); }
+    bool load_audio(const char* path, bool p_predecode = false);
 };
