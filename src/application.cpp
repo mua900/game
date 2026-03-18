@@ -43,8 +43,7 @@ bool Application::initialize()
 
         int render_size_x, render_size_y;
         SDL_GetRenderOutputSize(renderer, &render_size_x, &render_size_y);
-        printf("%d %d\n", render_size_x, render_size_y);
-        m_render = { vec2(), renderer };
+        m_render = { vec2(render_size_x, render_size_y), renderer };
     }
 
     // ttf
@@ -124,17 +123,23 @@ bool Application::load_assets()
     sb.append(make_string(base_path));
 
     bool load_from_base_path = game_load_assets(sb);
-    if (!load_from_base_path) {
-        return false;
-    }
 
-    return true;
+    // -----
+
+    const char* desc_name = "run_tree.txt";
+    sb.append(make_string(desc_name));
+    bool parse_description = parse_assets(sb.c_string(), m_catalog);
+
+    // -----
+
+    return load_from_base_path;
 }
 
 bool Application::game_load_assets(String_Builder& sb) {
     printf("Searching for assets in %s\n", sb.c_string());
 
-    sb.append(make_string("asset"));
+    String asset_folder = make_string("asset");
+    sb.append(asset_folder);
     sb.append(path_separator);
 
     // font
@@ -155,6 +160,8 @@ bool Application::game_load_assets(String_Builder& sb) {
             return false;
         }
     }
+
+    sb.remove(asset_folder.size + path_separator.size);
 
     return true;
 }
@@ -222,8 +229,9 @@ void Application::handle_events()
             }
             case SDL_EVENT_WINDOW_RESIZED:
             {
-                ivec2 ws;
-                SDL_GetWindowSize(m_window.window, &ws.x, &ws.y);
+                int render_size_x, render_size_y;
+                SDL_GetRenderOutputSize(m_render.renderer, &render_size_x, &render_size_y);
+                m_render.render_size = vec2(render_size_x, render_size_y);
                 break;
             }
             default:

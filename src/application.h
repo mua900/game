@@ -7,6 +7,7 @@
 #include "game.h"
 #include "input.h"
 #include "draw.h"
+#include "asset.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
@@ -55,6 +56,7 @@ public:
     Input m_input = {};
 
     Assets m_assets = {};
+    AssetCatalog m_catalog = {};
     AudioContext m_audio;
 
     Ui_State m_ui = {};

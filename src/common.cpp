@@ -96,6 +96,24 @@ bool string_compare(String s1, String s2)
     return true;
 }
 
+int string_match_start(String s1, String s2)
+{
+    int cursor = 0;
+    while (cursor < s1.size && cursor < s2.size)
+    {
+        if (s1.data[cursor] != s2.data[cursor])
+            break;
+        cursor += 1;
+    }
+
+    return cursor;
+}
+
+bool string_starts_with(String s, String start)
+{
+    return string_match_start(s, start) == start.size;
+}
+
 String string_slice(String s, int start, int end)
 {
     return String { s.data + start, end - start };
@@ -202,6 +220,10 @@ long get_file_size(FILE* file) {
 
 bool load_file(const char* filepath, BinaryData& data) {
 	FILE* handle = fopen(filepath, "r");
+    if (!handle)
+    {
+        return false;
+    }
 
 	auto filesize = get_file_size(handle);
 
@@ -224,14 +246,26 @@ bool load_file(const char* filepath, BinaryData& data) {
 	return true;
 }
 
-bool load_file_text(const char* filepath, String& s)
+bool load_file_text(const char* filepath, String_Builder& builder)
 {
-	BinaryData binary_data;
-	if (!load_file(filepath, binary_data)) {
-		return false;
+	FILE* handle = fopen(filepath, "r");
+    if (!handle)
+    {
+        return false;
+    }
+
+	auto filesize = get_file_size(handle);
+
+    builder.clear();
+    builder.ensure_size(filesize);
+
+	size_t written = fread(builder.buffer, sizeof(u8), filesize, handle);
+    if (filesize != written) {
+        return false;
 	}
 
-	s = String(binary_data);
+    builder.size = written;
+    fclose(handle);
 
 	return true;
 }
@@ -278,7 +312,7 @@ void String_Builder::create(int initial_capacity)
     buffer = (char*)malloc(initial_capacity);
     if (!buffer) panic("Malloc fail");
     buffer_capacity = initial_capacity;
-    cursor = 0;
+    size = 0;
     buffer[0] = '\0';
 }
 
@@ -288,23 +322,23 @@ String_Builder::String_Builder(int initial_capacity) {
 
 void String_Builder::remove(int amount)
 {
-    cursor = MAX(0, cursor - amount);
+    size = MAX(0, size - amount);
 }
 
 void String_Builder::remove_slice(int start, int end)
 {
-    if (start >= cursor || start >= end)
+    if (start >= size || start >= end)
         return;
 
-    if (end >= cursor)
-        end = cursor;
+    if (end >= size)
+        end = size;
 
-    for (int i = end; i < cursor; i++)
+    for (int i = end; i < size; i++)
     {
         buffer[start + i] = buffer[i];
     }
 
-    cursor -= (end - start);
+    size -= (end - start);
 }
 
 void String_Builder::resize() {
@@ -312,22 +346,22 @@ void String_Builder::resize() {
     if (!nbuff) panic("Malloc fail");
     if (buffer)
     {
-        memcpy(nbuff, buffer, cursor);
+        memcpy(nbuff, buffer, size);
         free(buffer);
     }
     buffer = nbuff;
     buffer_capacity *= 2;
 }
 
-int String_Builder::grow_to_size(int size) {
+int String_Builder::ensure_size(int cap) {
     int count = 0;
-    while (size >= buffer_capacity) {
+    while (cap >= buffer_capacity) {
         resize();
         count++;
         if (count > 5) {
             fprintf(stderr, "String builder buffer resize failed repeatedly: Possible memory allocation issue or corrupted buffer state.\n"
                 "Relevant: buffer_capacity: %d, cursor: %d, provided string size: %d",
-                buffer_capacity, cursor, size);
+                buffer_capacity, size, cap);
             return 1;
         }
     }
@@ -336,17 +370,17 @@ int String_Builder::grow_to_size(int size) {
 }
 
 void String_Builder::append(String string) {
-    grow_to_size(cursor + string.size);
+    ensure_size(size + string.size);
 
-    memcpy(buffer + cursor, string.data, string.size);
-    cursor += string.size;
+    memcpy(buffer + size, string.data, string.size);
+    size += string.size;
 }
 
 void String_Builder::append_char(char ch) {
-    grow_to_size(cursor + 1);
+    ensure_size(size + 1);
 
-    buffer[cursor] = ch;
-    cursor += 1;
+    buffer[size] = ch;
+    size += 1;
 }
 
 void String_Builder::append_integer(int n)
@@ -369,7 +403,7 @@ void String_Builder::append_float(float n) {
 }
 
 void String_Builder::clear_and_append(String s) {
-    cursor = 0;
+    size = 0;
     append(s);
 }
 
@@ -379,33 +413,41 @@ void String_Builder::append_many(String* strings, int n) {
         total_length += strings[i].size;
     }
 
-    grow_to_size(this->cursor + total_length);
+    ensure_size(this->size + total_length);
     for (int i = 0; i < n; i++) {
-        memcpy(this->buffer + this->cursor, strings[i].data, strings[i].size);
-        cursor += strings[i].size;
+        memcpy(this->buffer + this->size, strings[i].data, strings[i].size);
+        size += strings[i].size;
     }
 }
 
 const char* String_Builder::c_string() {
-    this->buffer[this->cursor] = '\0';
+    this->buffer[this->size] = '\0';
     return this->buffer;
 }
 
 void String_Builder::free_buffer() {
     free(this->buffer);
-    cursor = 0;
+    size = 0;
     buffer_capacity = 0;
     buffer = NULL;
 }
 
 void String_Builder::clear() {
-    cursor = 0;
+    size = 0;
     buffer[0] = '\0';
 }
 
 String String_Builder::to_string()
 {
-    return String(buffer, cursor);
+    return String(buffer, size);
+}
+
+String String_Builder::slice(int start, int end)
+{
+    if (end < start) {
+        panic("Invalid string slicing");
+    }
+    return String(buffer + start, end - start);
 }
 
 bool Rectangle::contains(vec2 p) const
@@ -426,22 +468,15 @@ void String::trim() {
 
 void String::print(bool newline) const
 {
-    int size_nt = size + 1;
-    char* mem = (char*)malloc(size_nt);
-    if (!mem)
-    {
-        panic("Malloc fail");
-    }
-    memcpy(mem, data, size);
-    mem[size] = '\0';
+    String s = *this;
+    SCOPE_STRING(s, cstr);
     if (newline)
     {
-        printf("%s\n", mem);
+        printf("%s\n", cstr);
     }
     else {
-        printf("%s", mem);
+        printf("%s", cstr);
     }
-    free(mem);
 }
 
 bool String::operator==(const String& other) const

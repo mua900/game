@@ -137,6 +137,8 @@ struct String {
 
 String make_string(const char* s);
 bool string_compare(String s1, String s2);
+bool string_starts_with(String s, String start);
+int string_match_start(String s1, String s2);
 String string_slice(String s, int start, int end);
 String string_slice_to_character(String s, char c);
 std::array<String, 2> string_cut_from_character(String s, char c);
@@ -149,7 +151,7 @@ double string_to_real(String s, bool* success);
 struct String_Builder {
     char* buffer = NULL;
     int buffer_capacity = 0;
-    int cursor = 0;
+    int size = 0;
 
     String_Builder() {
         create(128);
@@ -177,9 +179,10 @@ struct String_Builder {
     void free_buffer();
     void clear();
     String to_string();
+    String slice(int start, int end);
+    int ensure_size(int size);
 private:
     void resize();
-    int grow_to_size(int size);
 };
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
@@ -187,9 +190,6 @@ private:
 #define MIN(x,y) (((x) > (y)) ? (y) : (x))
 #define MAX(x,y) (((x) > (y)) ? (x) : (y))
 #define CLAMP(x, lower, upper) (MIN(upper, MAX(x, lower)))
-
-bool load_file(const char* filepath, BinaryData& bdata);
-bool load_file_text(const char* filepath, String& s);
 
 long get_file_size(FILE* file);
 
@@ -214,6 +214,9 @@ struct File {
 	double read_number();
 	u64 read_integer();
 };
+
+bool load_file(const char* filepath, BinaryData& bdata);
+bool load_file_text(const char* filepath, String_Builder& builder);
 
 static inline bool is_digit(char c)
 {
