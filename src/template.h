@@ -408,4 +408,59 @@ struct BucketList {
 	{
 		return { this, buckets.size(), 0 };
 	}
+
+	struct ConstIterator {
+		const BucketList<T>* list = {};
+		int bucket_index = 0;
+		int slot_index = 0;
+
+		void next()
+		{
+			for (int i = bucket_index; i < list->buckets.size(); i++)
+			{
+				const Bucket& bucket = list->buckets.get_ref(i);
+				auto flags = bucket.occupied_flags;
+				flags &= BUCKET_FLAGS_FULL << (slot_index + 1);  // ignore flags before the point we are looking
+				if (flags != 0)
+				{
+					int index = lsb_index(flags);
+
+					bucket_index = i;
+					slot_index = index;
+					return;
+				}
+				else
+				{
+					slot_index = 0;
+				}
+			}
+
+			bucket_index = list->buckets.size();
+		}
+
+		ConstIterator& operator++() {
+			next();
+			return *this;
+		}
+
+		const T& operator*() const {
+			return list->buckets.get_ref(bucket_index).elements[slot_index];
+		}
+
+		bool operator!=(const ConstIterator& other) const {
+			return bucket_index != other.bucket_index || slot_index != other.slot_index;
+		}
+	};
+
+	ConstIterator begin() const
+	{
+		ConstIterator it = { this, 0, -1 };
+		it.next();
+		return it;
+	}
+
+	ConstIterator end() const
+	{
+		return { this, buckets.size(), 0 };
+	}
 };

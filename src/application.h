@@ -6,6 +6,7 @@
 #include "ui.h"
 #include "game.h"
 #include "input.h"
+#include "draw.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
@@ -17,7 +18,6 @@ enum ApplicationMode {
 
 struct Window {
     SDL_Window* window;
-    SDL_Renderer* renderer;
 };
 
 struct Assets {
@@ -44,8 +44,6 @@ struct AudioContext {
     AudioData audio_data = {};
 };
 
-typedef float (*SampleGetter)(void* user, int frame, int channel);
-
 class Application {
 public:
     GameState game_state = {};
@@ -53,6 +51,7 @@ public:
     ApplicationMode mode = ApplicationMode::AppModeMenu;
 
     Window m_window = {};
+    RenderContext m_render = {};
     Input m_input = {};
 
     Assets m_assets = {};
@@ -87,9 +86,6 @@ private:
     bool load_assets();
     bool game_load_assets(String_Builder& sb);  // helper
 
-    void draw_game();
-    void draw_ui();
-
     bool mouse_input();
     bool keyboard_input(SDL_KeyboardEvent keyboard);
 
@@ -97,19 +93,9 @@ private:
 
     Text create_text(String text, Font font, Color color);
 
-    void render_waveform(vec2 area_center, vec2 area_scale, int frame_count, int channel_count, Color color, SampleGetter sample_getter, void* user_data, bool draw_lines);
-
-    void render_textured_rectangle(Rectangle rect, SDL_Texture* texture, Color color);
-
     void render_slider(Rectangle area, vec2 knob_scale, float value, Color slider_color, Color knob_color, const Text& text);
     void render_text_field(const Text_Field& text_field);
     void render_dropdown(const Drop_Down_List& list, Color title_color, Color option_color);
 };
 
 bool load_font(Font* font, String_Builder& path, String font_folder, String font_file, float size);
-
-void render_text_size(SDL_Renderer* renderer, Text text, vec2 where, vec2 absolute_scale = vec2(0, 0));
-void render_text_scale(SDL_Renderer* renderer, Text text, vec2 where, vec2 scale_factor = vec2(0,0));
-
-// polygon drawing
-void draw_arrowhead(SDL_Renderer* renderer, vec2 position, vec2 direction, float scale, ColorF color);

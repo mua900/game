@@ -1,6 +1,9 @@
 #ifndef _GAME_H
 #define _GAME_H
 
+// debug flags
+#define PHYSICS_DEBUG 1
+
 #include "common.h"
 #include "template.h"
 
@@ -150,6 +153,8 @@ struct SpatialGrid {
 };
 
 struct GameState {
+    u32 ticks = 0;
+
     BucketList<GameObject> game_objects = {};
     SpatialGrid grid = {};
 
@@ -158,8 +163,8 @@ struct GameState {
 
     bool initialize();
     void cleanup();
-    void update(double delta_time, const Input& input);
-    void fixed_update(int ticks_per_second);  // dt is 1 / tps
+    void update(double elapsed_time, double delta_time, const Input& input);
+    void fixed_update(double timeStep);
 
     void add_object(GameObject& obj)
     {

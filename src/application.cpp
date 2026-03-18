@@ -39,7 +39,12 @@ bool Application::initialize()
 
         SDL_ShowWindow(window);
 
-        m_window = { window, renderer };
+        m_window = { window };
+
+        int render_size_x, render_size_y;
+        SDL_GetRenderOutputSize(renderer, &render_size_x, &render_size_y);
+        printf("%d %d\n", render_size_x, render_size_y);
+        m_render = { vec2(), renderer };
     }
 
     // ttf
@@ -90,7 +95,7 @@ Text Application::create_text(String text, Font font, Color color)
     if (!surface)
         return Text();
 
-    SDL_Texture* texture = SDL_CreateTextureFromSurface(m_window.renderer, surface);
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(m_render.renderer, surface);
 
     if (!texture)
     {
@@ -261,7 +266,7 @@ void Application::update()
 
     timeout();
 
-    game_state.update(m_delta_time_seconds, m_input);
+    game_state.update(m_time_seconds, m_delta_time_seconds, m_input);
 }
 
 void Application::timeout()
@@ -299,7 +304,7 @@ void Application::cleanup()
 
 void Application::draw()
 {
-    SDL_Renderer* renderer = m_window.renderer;
+    SDL_Renderer* renderer = m_render.renderer;
 
     if (SDL_GetWindowFlags(m_window.window) & SDL_WINDOW_MINIMIZED) {
         // don't draw anything if the window is minimized
@@ -309,44 +314,10 @@ void Application::draw()
     SDL_SetRenderDrawColor(renderer, COLOR_ARG(m_background_color));
     SDL_RenderClear(renderer);
 
-    draw_game();
-    draw_ui();
+    draw_game(m_render, game_state);
+    draw_ui(m_render);
 
     SDL_RenderPresent(renderer);
-}
-
-void Application::draw_game()
-{
-    for (auto object : game_state.game_objects)
-    {
-        switch (object.type)
-        {
-            case GOT_Wall:
-            {
-                SDL_FRect area = { object.position.x, object.position.y, 100, 100 };
-                SDL_SetRenderDrawColor(m_window.renderer, 0x55, 0x88, 0x55, 0xff);
-                SDL_RenderFillRect(m_window.renderer, &area);
-                break;
-            }
-            case GOT_Player:
-            {
-                SDL_FRect area = { object.position.x, object.position.y, 50, 50 };
-                SDL_SetRenderDrawColor(m_window.renderer, 0xAA, 0x66, 0x99, 0xff);
-                SDL_RenderFillRect(m_window.renderer, &area);
-
-                break;
-            }
-            case GOT_Enemy:
-            {
-                break;
-            }
-        }
-    }
-}
-
-void Application::draw_ui()
-{
-    // @todo
 }
 
 void Application::render_slider(Rectangle area, vec2 knob_scale, float value, Color slider_color, Color knob_color, const Text& text)
@@ -354,21 +325,21 @@ void Application::render_slider(Rectangle area, vec2 knob_scale, float value, Co
     float slider_knob_width = area.w * knob_scale.x;
     float slider_knob_height = area.h * knob_scale.y;
 
-    SDL_SetRenderDrawColor(m_window.renderer, COLOR_ARG(slider_color));
+    SDL_SetRenderDrawColor(m_render.renderer, COLOR_ARG(slider_color));
     SDL_FRect slider = { area.x, area.y, area.w, area.h };
-    SDL_RenderFillRect(m_window.renderer, &slider);
+    SDL_RenderFillRect(m_render.renderer, &slider);
     float percentage = value;
-    SDL_SetRenderDrawColor(m_window.renderer, COLOR_ARG(knob_color));
+    SDL_SetRenderDrawColor(m_render.renderer, COLOR_ARG(knob_color));
     SDL_FRect slider_knob = {
         slider.x - (slider_knob_width / 2) + (slider.w * percentage), slider.y + slider.h / 2 - slider_knob_height / 2,
         slider_knob_width, slider_knob_height
     };
-    SDL_RenderFillRect(m_window.renderer, &slider_knob);
+    SDL_RenderFillRect(m_render.renderer, &slider_knob);
 
     // text
     {
         const int margin = 10;
-        render_text_scale(m_window.renderer, text,
+        render_text_scale(m_render.renderer, text,
             vec2(slider.x + slider.w / 2, slider.y + slider.h * 2 + margin), vec2(0.6, 0.6));
     }
 }
@@ -376,7 +347,7 @@ void Application::render_slider(Rectangle area, vec2 knob_scale, float value, Co
 void Application::render_text_field(const Text_Field& text_field)
 {
     SDL_FRect tf_area = { text_field.m_area.x, text_field.m_area.y, text_field.m_area.w, text_field.m_area.h };
-    SDL_RenderFillRect(m_window.renderer, &tf_area);
+    SDL_RenderFillRect(m_render.renderer, &tf_area);
 
     SDL_Texture* text_texture = text_field.m_texture;
     float texture_width;
@@ -390,9 +361,9 @@ void Application::render_text_field(const Text_Field& text_field)
 
         SDL_FRect string_area = { tf_area.x, tf_area.y, texture_width, texture_height };
         SDL_FRect texture_area = { 0, 0, texture_width, texture_height };
-        SDL_RenderTexture(m_window.renderer, text_texture, &texture_area, &string_area);
+        SDL_RenderTexture(m_render.renderer, text_texture, &texture_area, &string_area);
 
-        SDL_SetRenderDrawColor(m_window.renderer, 0x33, 0x56, 0x74, 0xff);
+        SDL_SetRenderDrawColor(m_render.renderer, 0x33, 0x56, 0x74, 0xff);
 
         SDL_FRect cursor = (SDL_FRect){ tf_area.x + text_field.m_cursor_pixel_x,
                                         tf_area.y + text_field.m_cursor_pixel_y,
@@ -401,24 +372,24 @@ void Application::render_text_field(const Text_Field& text_field)
 }
 
 void Application::render_dropdown(const Drop_Down_List& list, Color title_color, Color option_color) {
-    SDL_SetRenderDrawColor(m_window.renderer, COLOR_ARG(title_color));
+    SDL_SetRenderDrawColor(m_render.renderer, COLOR_ARG(title_color));
 
     SDL_FRect header_area = {
         list.pos.x - list.scale.x/2, list.pos.y - list.scale.y / 2,
         list.scale.x, list.scale.y
     };
-    SDL_RenderFillRect(m_window.renderer, &header_area);
-    render_text_size(m_window.renderer, list.title,
+    SDL_RenderFillRect(m_render.renderer, &header_area);
+    render_text_size(m_render.renderer, list.title,
         vec2(header_area.x + header_area.w / 2, header_area.y + header_area.h / 2), vec2(header_area.w, header_area.h));
 
     if (list.open) {
-        SDL_SetRenderDrawColor(m_window.renderer, COLOR_ARG(option_color));
+        SDL_SetRenderDrawColor(m_render.renderer, COLOR_ARG(option_color));
 
         for (int i = 0; i < list.options.size(); i++) {
             SDL_FRect area = header_area;
             area.y += area.h * (i + 1);
-            SDL_RenderFillRect(m_window.renderer, &area);
-            render_text_size(m_window.renderer, list.get_option_label(i),
+            SDL_RenderFillRect(m_render.renderer, &area);
+            render_text_size(m_render.renderer, list.get_option_label(i),
                 vec2(area.x + area.w/2, area.y + area.h/2), vec2(area.w, area.h));
         }
     }
@@ -427,77 +398,6 @@ void Application::render_dropdown(const Drop_Down_List& list, Color title_color,
 bool Application::mouse_input()
 {
     return false;
-}
-
-void Application::render_waveform(vec2 area_center, vec2 area_scale, int frame_count, int channel_count, Color color, SampleGetter sample_getter, void* user_data, bool draw_lines)
-{
-    SDL_SetRenderDrawColor(m_window.renderer, COLOR_ARG(color));
-
-    #define BLOCK_SIZE 256
-    static SDL_FPoint points[AUDIO_MAX_CHANNELS][BLOCK_SIZE];
-
-    float vertical_step = area_scale.y / channel_count;
-    float step = (area_scale.x / float(frame_count));
-    float base_height = area_center.y;
-
-    int iter_count = frame_count / BLOCK_SIZE;
-
-    for (int block = 0; block < iter_count; block++)
-    {
-        int block_start = block * BLOCK_SIZE;
-
-        for (int i = 0; i < BLOCK_SIZE; i+=1)
-        {
-            int frame_index = block * BLOCK_SIZE + i;
-
-            for (int ch = 0; ch < channel_count; ch++)
-            {
-                float sample = sample_getter(user_data, frame_index, ch);
-
-                points[ch][i].x = area_center.x - (area_scale.x / 2) + (step * frame_index);
-                points[ch][i].y = (base_height + sample * (area_scale.y / 2.0)) / channel_count + (ch * vertical_step);
-            }
-        }
-
-        for (int ch = 0; ch < channel_count; ch++)
-        {
-            if (draw_lines) {
-                SDL_RenderLines(m_window.renderer, points[ch], BLOCK_SIZE);
-            }
-            else {
-                SDL_RenderPoints(m_window.renderer, points[ch], BLOCK_SIZE);
-            }
-        }
-    }
-
-    int remaining = frame_count - (iter_count * BLOCK_SIZE);
-
-    ASSERT(remaining < BLOCK_SIZE);
-
-    for (int i = 0; i < remaining; i+=1)
-    {
-        int frame_index = iter_count * BLOCK_SIZE + i;
-
-        for (int ch = 0; ch < channel_count; ch++)
-        {
-            float sample = sample_getter(user_data, frame_index, ch);
-
-            points[ch][i].x = area_center.x - (area_scale.x / 2) + (step * frame_index);
-            points[ch][i].y = base_height + sample * (area_scale.y / 2.0) / channel_count + (ch * vertical_step);
-        }
-    }
-
-    for (int ch = 0; ch < channel_count; ch++)
-    {
-        if (draw_lines) {
-            SDL_RenderLines(m_window.renderer, points[ch], remaining);
-        }
-        else {
-            SDL_RenderPoints(m_window.renderer, points[ch], remaining);
-        }
-    }
-
-    #undef BLOCK_SIZE
 }
 
 bool AudioData::load_audio_file(String path) {
@@ -547,74 +447,4 @@ bool AudioData::load_audio_file(String path) {
     ASSERT(is_in_desired_spec());
 
     return true;
-}
-
-void Application::render_textured_rectangle(Rectangle rect, SDL_Texture* texture, Color color) {
-    SDL_SetRenderDrawColor(m_window.renderer, COLOR_ARG(color));
-    SDL_FRect area = { rect.x, rect.y, rect.w, rect.h };
-    SDL_RenderFillRect(m_window.renderer, &area);
-
-    float tex_w, tex_h;
-    SDL_GetTextureSize(texture, &tex_w, &tex_h);
-    SDL_FRect src = {0,0,tex_w,tex_h};
-    SDL_FRect dst = area;
-    SDL_RenderTexture(m_window.renderer, texture, &src, &dst);
-}
-
-void render_text_size(SDL_Renderer* renderer, Text text, vec2 where, vec2 absolute_scale)
-{
-    float tex_w, tex_h;
-    SDL_GetTextureSize(text.texture, &tex_w, &tex_h);
-
-    if (!absolute_scale.x)
-    {
-        absolute_scale = vec2(tex_w, tex_h);
-    }
-
-    SDL_FRect src = { 0,0,tex_w,tex_h };
-    SDL_FRect dst = {where.x - absolute_scale.x/2, where.y - absolute_scale.y/2, absolute_scale.x, absolute_scale.y};
-
-    SDL_RenderTexture(renderer, text.texture, &src, &dst);
-}
-
-void render_text_scale(SDL_Renderer* renderer, Text text, vec2 where, vec2 scale_factor)
-{
-    float tex_w, tex_h;
-    SDL_GetTextureSize(text.texture, &tex_w, &tex_h);
-
-    if (!scale_factor.x)
-    {
-        scale_factor = vec2(1,1);
-    }
-
-    vec2 scale = vec2(tex_w * scale_factor.x, tex_h * scale_factor.y);
-
-    SDL_FRect src = { 0,0,tex_w,tex_h };
-    SDL_FRect dst = {where.x - scale.x/2, where.y - scale.y/2, scale.x, scale.y};
-
-    SDL_RenderTexture(renderer, text.texture, &src, &dst);
-}
-
-void draw_arrowhead(SDL_Renderer* renderer, vec2 position, vec2 direction, float scale, ColorF color)
-{
-    SDL_Vertex vertices[3] = {};
-
-    vec2 dir = direction.normalized();
-    vec2 dir_ortho = vec2(-dir.y, dir.x);
-
-    vertices[0].position.x = position.x + dir.x * scale;
-    vertices[0].position.y = position.y + dir.y * scale;
-    vertices[0].color = SDL_FColor{ color.r, color.g, color.b, color.a };
-
-    vertices[1].position.x = position.x + dir_ortho.x * scale;
-    vertices[1].position.y = position.y + dir_ortho.y * scale;
-    vertices[1].color = SDL_FColor{ color.r, color.g, color.b, color.a };
-
-    vertices[2].position.x = position.x - dir_ortho.x * scale;
-    vertices[2].position.y = position.y - dir_ortho.y * scale;
-    vertices[2].color = SDL_FColor{ color.r, color.g, color.b, color.a };
-
-    int indices[3] = {0, 1, 2};
-
-    SDL_RenderGeometry(renderer, NULL, vertices, 3, indices, 3);
 }

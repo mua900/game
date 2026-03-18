@@ -20,9 +20,33 @@ bool GameState::initialize()
 
     bodies.add(groundBody);
 
+    vec2 playerPosition = vec2(500, 500);
+
+    b2BodyDef playerBodyDef = b2DefaultBodyDef();
+    playerBodyDef.type = b2_kinematicBody;
+    playerBodyDef.position = {playerPosition.x, playerPosition.y};
+    b2BodyId playerBody = b2CreateBody(worldId, &playerBodyDef);
+
+    b2Circle playerCircle = {};
+    playerCircle.radius = 10.0;
+    b2ShapeDef shapeDef = b2DefaultShapeDef();
+    b2CreateCircleShape(playerBody, &shapeDef, &playerCircle);
+
+    bodies.add(playerBody);
+
+    b2BodyDef boxDef = b2DefaultBodyDef();
+    boxDef.type = b2_dynamicBody;
+    b2BodyId box = b2CreateBody(worldId, &boxDef);
+
+    b2Polygon boxShape = b2MakeBox(1.0, 1.0);
+    shapeDef = b2DefaultShapeDef();
+    b2CreatePolygonShape(box, &shapeDef, &boxShape);
+
+    bodies.add(box);
+
     Player player;
     player.speed = 100;
-    GameObject player_object = GameObject(vec2(500, 500), player);
+    GameObject player_object = GameObject(playerPosition, player);
     GameObject wall = GameObject(vec2(100, 100), Wall(vec2(100, 100)));
 
     add_object(wall);
@@ -36,8 +60,20 @@ bool GameState::initialize()
     return true;
 }
 
-void GameState::update(double delta_time, const Input& input)
-{
+void GameState::update(double elapsed_time, double delta_time, const Input& input)
+{  
+    const int targetTicksPerSecond = 40;
+    const double tickTime = 1.0 / double(targetTicksPerSecond);
+    double simulationTime = ticks * tickTime;
+    while (elapsed_time > simulationTime)
+    {
+        fixed_update(targetTicksPerSecond);
+
+        ticks += 1;
+        simulationTime = ticks * tickTime;
+    }
+    
+
     for (auto& object : game_objects)
     {
         switch (object.type)
@@ -65,9 +101,9 @@ void GameState::update(double delta_time, const Input& input)
     }
 }
 
-void GameState::fixed_update(int ticks_per_second)
+void GameState::fixed_update(double timeStep)
 {
-    double dt = 1.0 / double(ticks_per_second);
+    b2World_Step(worldId, timeStep, 4);
 }
 
 void GameState::cleanup()

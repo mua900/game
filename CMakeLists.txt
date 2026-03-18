@@ -15,6 +15,8 @@ add_executable(game
     src/ui.cpp
     src/game.h
     src/game.cpp
+    src/draw.h
+    src/draw.cpp
 
     src/common.h
     src/common.cpp
