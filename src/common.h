@@ -304,6 +304,8 @@ inline vec2 operator*(float s, vec2 v)
     return vec2(v.x * s, v.y * s);
 }
 
+vec2 get_direction_vector(float angle);
+
 struct Rectangle {
     float x, y, w, h;
 

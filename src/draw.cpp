@@ -2,33 +2,24 @@
 
 void draw_game(RenderContext context, const GameState& state)
 {
-#if PHYSICS_DEBUG
-    SDL_SetRenderDrawColor(context.renderer, 0x44, 0x66, 0x55, 0xff);
-
-    for (const auto body_id : state.bodies)
-    {
-        b2Vec2 position = b2Body_GetPosition(body_id);
-        b2Rot rotation = b2Body_GetRotation(body_id);
-
-        SDL_FRect area = { position.x, position.y, 60, 60 };
-        SDL_RenderFillRect(context.renderer, &area);
-    }
-#endif
-
     for (const auto object : state.game_objects)
     {
         switch (object.type)
         {
             case GOT_Wall:
             {
-                SDL_FRect area = { object.position.x, object.position.y, 100, 100 };
+                const Wall& wall = object.wall;
+                float width = wall.bounding_box.max.x - wall.bounding_box.min.x;
+                float height = wall.bounding_box.max.y - wall.bounding_box.min.y;
+                SDL_FRect area = { wall.bounding_box.min.x, wall.bounding_box.min.y, width, height };
                 SDL_SetRenderDrawColor(context.renderer, 0x55, 0x88, 0x55, 0xff);
                 SDL_RenderFillRect(context.renderer, &area);
                 break;
             }
             case GOT_Player:
             {
-                SDL_FRect area = { object.position.x, object.position.y, 50, 50 };
+                const Player& player = object.player;
+                SDL_FRect area = { player.transform.position.x, player.transform.position.y, player.transform.scale.x, player.transform.scale.y };
                 SDL_SetRenderDrawColor(context.renderer, 0xAA, 0x66, 0x99, 0xff);
                 SDL_RenderFillRect(context.renderer, &area);
 

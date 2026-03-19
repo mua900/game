@@ -459,6 +459,13 @@ String String_Builder::slice(int start, int end)
     return String(buffer + start, end - start);
 }
 
+vec2 get_direction_vector(float angle)
+{
+    float c = cosf(angle);
+    float s = sinf(angle);
+    return vec2(c, s);
+}
+
 bool Rectangle::contains(vec2 p) const
 {
     return p.x >= x && p.y >= y && p.x <= x + w && p.y <= y + h;

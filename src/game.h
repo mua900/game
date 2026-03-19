@@ -1,9 +1,6 @@
 #ifndef _GAME_H
 #define _GAME_H
 
-// debug flags
-#define PHYSICS_DEBUG 1
-
 #include "common.h"
 #include "template.h"
 
@@ -25,74 +22,110 @@ enum GameObjectType {
     GOT_EnergySource,
 };
 
+using ObjectId = u32;
+
+struct Transform {
+    vec2 position;
+    vec2 velocity;
+    vec2 scale;
+    float rotation;
+    ObjectId object;
+    b2BodyId body;  // 8
+};
+
+struct TransformLight {
+    vec2 position;
+    float direction;  // in angles between 0 and 2PI
+    float velocity;   // velocity magnitude in the direction
+};
+
+struct AABB {
+    vec2 min;
+    vec2 max;
+};
+
 struct LaserCollector {
+    vec2 position;
 	vec2 direction;
 
-	LaserCollector(vec2 dir) : direction(dir) {}
+	LaserCollector(vec2 pos, vec2 dir) : position(pos), direction(dir) {}
 };
 
 struct LaserEmitter {
+    vec2 position;
 	vec2 direction;
 
-	LaserEmitter(vec2 dir) : direction(dir) {}
+	LaserEmitter(vec2 pos, vec2 dir) : position(pos), direction(dir) {}
 };
 
 struct LaserReflector {
+    vec2 position;
 	LaserEmitter* source = nullptr;
 	LaserCollector* target = nullptr;
 
-	LaserReflector(LaserEmitter* src, LaserCollector* dst) : source(src), target(dst) {}
+	LaserReflector(vec2 pos, LaserEmitter* src, LaserCollector* dst) : position(pos), source(src), target(dst) {}
 };
 
 struct WavelengthShifter {
+    vec2 position;
 	float shift;
+
+	WavelengthShifter(vec2 pos, float shift) : position(pos), shift(shift) {}
 };
 
 struct LaserSplitter {
+    vec2 position;
 	float scatter;
 	int nbeams;
+
+	LaserSplitter(vec2 pos, float scat, int beam_count) : position(pos), scatter(scat), nbeams(beam_count) {}
 };
 
 struct EnergySource {
+    vec2 position;
 
-	EnergySource() {}
+	EnergySource(vec2 position) : position(position) {}
 };
 
 struct EnergyGate {
+    vec2 position;
 	vec2 scale;
+    b2BodyId body;
 	EnergySource* source = nullptr;
 
-	EnergyGate(vec2 scale) : scale(scale) {}
+	EnergyGate(vec2 pos, vec2 scale, b2BodyId body) : position(pos), scale(scale), body(body) {}
 };
 
 struct Mirror {
-	vec2 direction;
+    TransformLight transform;
 
-	Mirror(vec2 dir) : direction(dir) {}
+	Mirror(TransformLight transform) : transform(transform) {}
 };
 
 struct Wall {
-    vec2 scale;
+    b2BodyId body;
+    AABB bounding_box;
 
-    Wall(vec2 scale)
-        : scale(scale)
+    Wall(b2BodyId body_id, AABB bb)
+        : body(body_id), bounding_box(bb)
     {}
 };
 
 struct Player {
-    vec2 velocity = {};
-    float speed = 0;
-    float rotation = {};
+    float speed;
+    Transform transform;
+
+    Player() {}
 };
 
 struct Enemy {
-    vec2 velocity = {};
-    float rotation = {};
+    TransformLight transform;
+
+    Enemy(TransformLight tr) : transform(tr) {}
 };
 
 struct GameObject {
     GameObjectType type;
-    vec2 position;
 
     union {
         Player player;
@@ -109,24 +142,21 @@ struct GameObject {
 
     GameObject()
     {}
-    GameObject(vec2 position, Wall& wall)
-        : type(GOT_Wall), position(position), wall(wall)
+    GameObject(Wall& wall)
+        : type(GOT_Wall), wall(wall)
     {}
-    GameObject(vec2 position, Wall&& wall)
-        : type(GOT_Wall), position(position), wall(wall)
+    GameObject(Wall&& wall)
+        : type(GOT_Wall), wall(wall)
     {}
-    GameObject(vec2 position, Player& player)
-        : type(GOT_Player), position(position), player(player)
+    GameObject(Player& player)
+        : type(GOT_Player), player(player)
     {}
-    GameObject(vec2 position, Enemy& enemy)
-        : type(GOT_Enemy), position(position), enemy(enemy)
+    GameObject(Enemy& enemy)
+        : type(GOT_Enemy), enemy(enemy)
     {}
 };
 
 int spatial_hash(vec2 pos);
-
-// generation ids if they will be needed
-using ObjectId = int;
 
 #define OVERFLOW_CELL_INDEX_SENTINEL -1
 #define CELL_CAPACITY 8
@@ -226,54 +256,43 @@ struct GameState {
     SpatialGrid grid = {};
 
     b2WorldId worldId = {};
-    DArray<b2BodyId> bodies = {};
 
     bool initialize();
     void cleanup();
     void update(double elapsed_time, double delta_time, const Input& input);
     void fixed_update(double timeStep);
 
-    b2BodyId add_body_box(vec2 position, vec2 scale, b2BodyType body_type)
-    {
-        b2BodyDef bodyDef = b2DefaultBodyDef();
-        bodyDef.type = body_type;
-        b2BodyId body = b2CreateBody(worldId, &bodyDef);
-        b2Polygon polygon = b2MakeBox(scale.x, scale.y);
-        b2ShapeDef shapeDef = b2DefaultShapeDef();
-        b2CreatePolygonShape(body, &shapeDef, &polygon);
-
-        bodies.add(body);
-        return body;
-    }
-
-    b2BodyId add_body_circle(vec2 position, float radius, b2BodyType body_type)
-    {
-        b2BodyDef bodyDef = b2DefaultBodyDef();
-        bodyDef.type = body_type;
-        bodyDef.position = {position.x, position.y};
-        b2BodyId body = b2CreateBody(worldId, &bodyDef);
-
-        b2Circle circle = {};
-        circle.radius = radius;
-        b2ShapeDef shapeDef = b2DefaultShapeDef();
-        b2CreateCircleShape(body, &shapeDef, &circle);
-
-        bodies.add(body);
-        return body;
-    }
-
     void add_object(GameObject& obj)
     {
         int object_index = game_objects.add(obj);
-        grid.add(obj.position, object_index);
     }
 
-    void remove_object(int object)
+    void remove_object(ObjectId object)
     {
-        vec2 pos = game_objects.get(object).position;
         game_objects.remove(object);
-        grid.remove(pos, object);
     }
 };
+
+b2BodyId make_body_box(b2WorldId worldId, vec2 position, vec2 scale, b2BodyType body_type);
+b2BodyId make_body_circle(b2WorldId worldId, vec2 position, float radius, b2BodyType body_type);
+
+void translate(vec2& pos, vec2 translate, b2BodyId body = b2_nullBodyId);
+void rotate(vec2& direction, float amount, b2BodyId body = b2_nullBodyId);
+void scale(vec2& scale, float factor, b2BodyId body = b2_nullBodyId);
+
+void translate(TransformLight& transform, vec2 translate, b2BodyId body = b2_nullBodyId);
+void rotate(TransformLight& transform, float amount, b2BodyId body = b2_nullBodyId);
+void scale(TransformLight& transform, float factor, b2BodyId = b2_nullBodyId);
+
+void translate(b2BodyId body, vec2 translate);
+void rotate(b2BodyId body, float amount);
+void scale(b2BodyId body, float factor);
+
+void translate(Transform& pos, vec2 translate);
+void rotate(Transform& direction, float amount);
+void scale(Transform& scale, float factor);
+
+AABB translate_bounding_box(AABB original, vec2 translation);
+AABB scale_bounding_box(AABB original, vec2 scale);
 
 #endif // _GAME_H
