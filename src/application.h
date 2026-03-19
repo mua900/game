@@ -99,5 +99,3 @@ private:
     void render_text_field(const Text_Field& text_field);
     void render_dropdown(const Drop_Down_List& list, Color title_color, Color option_color);
 };
-
-bool load_font(Font* font, String_Builder& path, String font_folder, String font_file, float size);

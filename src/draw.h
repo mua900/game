@@ -6,6 +6,8 @@
 #include "game.h"
 #include <SDL3/SDL.h>
 
+using Texture = SDL_Texture*;  // @todo will probably change later
+
 struct RenderContext {
     vec2 render_size = vec2();
     SDL_Renderer* renderer = nullptr;

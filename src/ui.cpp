@@ -150,6 +150,7 @@ void Text_Field::calculate_cursor_from_selection(String string, Font font)
 
 size_t Text_Field::calculate_cursor_from_mouse(vec2 position, String string, Font font)
 {
+    // @todo consider the distance to middle and half width of the glyph instead of considering the start position
     int line_skip = TTF_GetFontLineSkip(font.font);
     Rectangle area = m_area;
     int line_count = m_line_count;

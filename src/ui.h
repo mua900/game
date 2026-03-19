@@ -49,9 +49,12 @@ enum Text_Id : int {
 };
 
 struct Font {
-    TTF_Font* font = NULL;
-    float size = 0;
+    TTF_Font* font;
+    float size;
 };
+
+bool load_font(Font* font, String_Builder& path, String font_folder, String font_file, float size);
+bool load_font_file(Font* font, const char* path, float size);
 
 struct GapBuffer {
     char* buffer = nullptr;
@@ -80,10 +83,7 @@ struct GapBuffer {
 
 enum Text_Input_Target : u8 {
     NO_TARGET,
-    EXPRESSION_INPUT_LEFT,
-    EXPRESSION_INPUT_RIGHT,
-    VARIABLE_NAME,
-    VARIABLE_VALUE,
+    DUMMY_TARGET,
 };
 
 struct Text_Field

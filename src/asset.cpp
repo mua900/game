@@ -1,6 +1,8 @@
 #include "asset.h"
 #include "log.h"
 
+#include <SDL3_image/SDL_image.h>
+
 String next_word(String source, int& offset)
 {
     offset += string_match_character(source, offset, ' ');
@@ -115,7 +117,7 @@ AssetParseLineResult asset_parse_line(String line, Asset& pointer)
     pointer.is_folder = is_folder;
     pointer.name = name;
     pointer.path = path;
-    pointer.ready = false;
+    pointer.identifier = NullAssetId;
 
     result |= ASSET_LINE_IS_VALID;
     return result;
@@ -147,7 +149,7 @@ bool parse_assets(const char* description, AssetCatalog& catalog)
 
         if (result & ASSET_LINE_IS_VALID)
         {
-            catalog.assets.add(asset);
+            catalog.add_asset(asset);
 
             if (result & ASSET_LINE_HAS_TRAILING_TOKENS)
             {
@@ -171,4 +173,84 @@ bool parse_assets(const char* description, AssetCatalog& catalog)
     }
 
     return true;
+}
+
+bool load_asset(Asset& asset, AssetLoadContext& load_context);
+
+AssetId get_asset(const char* name_cstr, AssetCatalog& catalog)
+{
+    // @todo maybe this is slow
+    String name = make_string(name_cstr);
+    for (auto& asset : catalog.assets)
+    {
+        if (string_compare(asset.name, name))
+        {
+            if (asset.identifier.valid())
+            {
+                return asset.identifier;
+            }
+            else
+            {
+                bool load = load_asset(asset, catalog.load_context);
+                if (!load)
+                    return NullAssetId;
+
+                return asset.identifier;
+            }
+        }
+    }
+
+    return NullAssetId;
+}
+
+bool load_asset(Asset& asset, AssetLoadContext& load_context)
+{
+    SCOPE_STRING(asset.path, path);
+
+    switch (asset.kind)
+    {
+        case ASSET_KIND_IMAGE: {
+            SDL_Texture* texture = IMG_LoadTexture(load_context.renderer, path);
+            if (!texture)
+            {
+                asset.identifier.id = -1;
+                return false;
+            }
+
+            asset.data.texture = texture;
+            asset.identifier.generation += 1;
+
+            return true;
+        }
+        case ASSET_KIND_AUDIO: {
+            if (!asset.data.audio.load_audio_file(asset.path))
+            {
+                asset.identifier.id = -1;
+                return false;
+            }
+
+            asset.identifier.generation += 1;
+
+            return true;
+        }
+        case ASSET_KIND_FONT: {
+            bool success = load_font_file(&asset.data.font, path, asset.data.font.size);
+            if (!success)
+            {
+                asset.identifier.id = -1;
+                return false;
+            }
+
+            asset.identifier.generation += 1;
+            return true;
+        }
+        case ASSET_KIND_SHADER: {
+            log_warning("Shader loading or support for shaders not implemented but trying to load shader %s", path);
+            // fallthrough
+        }
+        default: {
+            asset.identifier.id = -1;
+            return false;
+        }
+    }
 }

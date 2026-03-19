@@ -6,32 +6,39 @@
 #include "common.h"
 #include "template.h"
 
+// @todo replace with sdl mixer
+
 // @todo speed control for playback maybe? Take a look at FrequencyRatio.
 
 #define AUDIO_MAX_CHANNELS 8
 
+// @todo delete
 #define DESIRED_AUDIO_FORMAT SDL_AUDIO_F32
 #define DESIRED_AUDIO_SAMPLE_RATE 48000
 #define DESIRED_AUDIO_CHANNEL_COUNT 2
 
 struct AudioData {
-    void* samples = nullptr;
-    SDL_AudioFormat format = DESIRED_AUDIO_FORMAT;
-    int channel_count = 0;
-    int frequency = 0;
-    int frame_count = 0;
+    void* samples;
+    SDL_AudioFormat format;
+    int channel_count;
+    int frequency;
+    int frame_count;
+
+    void init()
+    {
+        samples = nullptr;
+        format = DESIRED_AUDIO_FORMAT;
+        channel_count = 0;
+        frequency = 0;
+        frame_count = 0;
+    }
 
     void reset()
     {
         if (samples) {
             free(samples);
         }
-
-        samples = nullptr;
-        format = DESIRED_AUDIO_FORMAT;
-        channel_count = 0;
-        frequency = 0;
-        frame_count = 0;
+        init();
     }
 
     bool is_in_desired_spec()

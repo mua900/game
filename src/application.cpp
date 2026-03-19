@@ -176,11 +176,19 @@ bool load_font(Font* font, String_Builder& path, String font_folder, String font
 
     TTF_Font* ttf_font = TTF_OpenFont(path.c_string(), size);
 
+    bool success = load_font_file(font, path.c_string(), size);
+
     path.remove(font_folder.size + 1 + font_file.size);
 
-    if (!ttf_font) {
-        SCOPE_STRING(font_file, font_name);
-        fprintf(stderr, "Could not load font %s\n", font_name);
+    return success;
+}
+
+bool load_font_file(Font* font, const char* path, float size)
+{
+    TTF_Font* ttf_font = TTF_OpenFont(path, size);
+    if (!ttf_font)
+    {
+        fprintf(stderr, "Could not load font %s\n", path);
         fprintf(stderr, "%s\n", SDL_GetError());
         return false;
     }
