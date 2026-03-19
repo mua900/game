@@ -19,6 +19,8 @@ add_executable(game
     src/draw.cpp
     src/asset.h
     src/asset.cpp
+    src/log.h
+    src/log.cpp
 
     src/common.h
     src/common.cpp

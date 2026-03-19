@@ -2,4 +2,3 @@
 image file debug_shape image/debug_shape.png
 image file octagon image/octagon.png
 audio file sample_wav audio/sample.wav
-audio folder sound_effect audio/sfx

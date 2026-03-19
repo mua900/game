@@ -119,8 +119,17 @@ String string_slice(String s, int start, int end)
     return String { s.data + start, end - start };
 }
 
-String string_slice_to_character(String s, char c) {
-    int cursor = 0;
+String string_slice_to_character(String s, int start, char c) {
+    int cursor = start;
+    while (cursor < s.size && s.data[cursor] != c) {
+        cursor += 1;
+    }
+
+    return String(s.data + start, cursor - start);
+}
+
+String string_slice_after_character(String s, int start, char c) {
+    int cursor = start;
     while (cursor < s.size && s.data[cursor] != c) {
         cursor += 1;
     }
@@ -464,6 +473,22 @@ void String::trim() {
 		size--;
 		data++;
 	}
+}
+
+int string_match_character(const String s, int offset, char c)
+{
+    if (offset >= s.size)
+    {
+        return 0;
+    }
+
+    int count = 0;
+    while (s.size - offset > 0 && s.data[offset + count] == c)
+    {
+        count += 1;
+    }
+
+    return count;
 }
 
 void String::print(bool newline) const

@@ -15,6 +15,60 @@ enum GameObjectType {
     GOT_Wall,
     GOT_Player,
     GOT_Enemy,
+    GOT_LaserEmitter,
+    GOT_LaserCollector,
+    GOT_Mirror,
+    GOT_LaserReflector,
+    GOT_WavelengthShifter,
+    GOT_LaserSplitter,
+    GOT_EnergyGate,
+    GOT_EnergySource,
+};
+
+struct LaserCollector {
+	vec2 direction;
+
+	LaserCollector(vec2 dir) : direction(dir) {}
+};
+
+struct LaserEmitter {
+	vec2 direction;
+
+	LaserEmitter(vec2 dir) : direction(dir) {}
+};
+
+struct LaserReflector {
+	LaserEmitter* source = nullptr;
+	LaserCollector* target = nullptr;
+
+	LaserReflector(LaserEmitter* src, LaserCollector* dst) : source(src), target(dst) {}
+};
+
+struct WavelengthShifter {
+	float shift;
+};
+
+struct LaserSplitter {
+	float scatter;
+	int nbeams;
+};
+
+struct EnergySource {
+
+	EnergySource() {}
+};
+
+struct EnergyGate {
+	vec2 scale;
+	EnergySource* source = nullptr;
+
+	EnergyGate(vec2 scale) : scale(scale) {}
+};
+
+struct Mirror {
+	vec2 direction;
+
+	Mirror(vec2 dir) : direction(dir) {}
 };
 
 struct Wall {
@@ -44,6 +98,13 @@ struct GameObject {
         Player player;
         Enemy enemy;
         Wall wall;
+        LaserEmitter emitter;
+        LaserCollector collector;
+        Mirror mirror;
+        LaserReflector reflector;
+        EnergyGate gate;
+        WavelengthShifter shifter;
+        LaserSplitter splitter;
     };
 
     GameObject()
@@ -62,15 +123,15 @@ struct GameObject {
     {}
 };
 
-inline int spatial_hash(vec2 pos)
-{
-    return int(floor(pos.x) * 962623) ^ int(floor(pos.y) * 1193771);
-}
+int spatial_hash(vec2 pos);
+
+// generation ids if they will be needed
+using ObjectId = int;
 
 #define OVERFLOW_CELL_INDEX_SENTINEL -1
 #define CELL_CAPACITY 8
 struct SpatialGridCell {
-    int objects[CELL_CAPACITY];
+    ObjectId objects[CELL_CAPACITY];
     int count;
     int overflow_cell;
 };
@@ -102,7 +163,7 @@ struct SpatialGrid {
         return hash;
     }
 
-    void add(vec2 position, int object)
+    void add(vec2 position, ObjectId object)
     {
         int cell_index = calculate_cell_index(position);
         add_to_cell(cells[cell_index], object);
@@ -114,8 +175,14 @@ struct SpatialGrid {
         remove_from_cell(cells[cell_index], object);
     }
 
+    SpatialGridCell get_cell(vec2 position)
+    {
+        int cell_index = calculate_cell_index(position);
+        return cells[cell_index];
+    }
+
     // if we want the entries to be unique we would need to check all of them which we can do in a separate function as an opt in way
-    void add_to_cell(SpatialGridCell& cell, int object)
+    void add_to_cell(SpatialGridCell& cell, ObjectId object)
     {
         if (cell.count == CELL_CAPACITY)
         {
@@ -133,7 +200,7 @@ struct SpatialGrid {
         cell.count += 1;
     }
 
-    void remove_from_cell(SpatialGridCell& cell, int object)
+    void remove_from_cell(SpatialGridCell& cell, ObjectId object)
     {
         for (int i = 0; i < cell.count; i++)
         {
@@ -165,6 +232,35 @@ struct GameState {
     void cleanup();
     void update(double elapsed_time, double delta_time, const Input& input);
     void fixed_update(double timeStep);
+
+    b2BodyId add_body_box(vec2 position, vec2 scale, b2BodyType body_type)
+    {
+        b2BodyDef bodyDef = b2DefaultBodyDef();
+        bodyDef.type = body_type;
+        b2BodyId body = b2CreateBody(worldId, &bodyDef);
+        b2Polygon polygon = b2MakeBox(scale.x, scale.y);
+        b2ShapeDef shapeDef = b2DefaultShapeDef();
+        b2CreatePolygonShape(body, &shapeDef, &polygon);
+
+        bodies.add(body);
+        return body;
+    }
+
+    b2BodyId add_body_circle(vec2 position, float radius, b2BodyType body_type)
+    {
+        b2BodyDef bodyDef = b2DefaultBodyDef();
+        bodyDef.type = body_type;
+        bodyDef.position = {position.x, position.y};
+        b2BodyId body = b2CreateBody(worldId, &bodyDef);
+
+        b2Circle circle = {};
+        circle.radius = radius;
+        b2ShapeDef shapeDef = b2DefaultShapeDef();
+        b2CreateCircleShape(body, &shapeDef, &circle);
+
+        bodies.add(body);
+        return body;
+    }
 
     void add_object(GameObject& obj)
     {

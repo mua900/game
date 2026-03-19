@@ -10,39 +10,12 @@ bool GameState::initialize()
     worldDef.gravity = { 0.0f, 10.0f };
     worldId = b2CreateWorld(&worldDef);
 
-    b2BodyDef groundBodyDef = b2DefaultBodyDef();
-    groundBodyDef.position = { 0.0, 10.0 };
-    b2BodyId groundBody = b2CreateBody(worldId, &groundBodyDef);
-
-    b2Polygon groundBox = b2MakeBox(50, 10);
-    b2ShapeDef groundShapeDef = b2DefaultShapeDef();
-    b2CreatePolygonShape(groundBody, &groundShapeDef, &groundBox);
-
-    bodies.add(groundBody);
+    add_body_box(vec2( 0.0, 10.0 ), vec2(50, 10), b2_staticBody);
 
     vec2 playerPosition = vec2(500, 500);
+    add_body_circle(playerPosition, 10.0, b2_kinematicBody);
 
-    b2BodyDef playerBodyDef = b2DefaultBodyDef();
-    playerBodyDef.type = b2_kinematicBody;
-    playerBodyDef.position = {playerPosition.x, playerPosition.y};
-    b2BodyId playerBody = b2CreateBody(worldId, &playerBodyDef);
-
-    b2Circle playerCircle = {};
-    playerCircle.radius = 10.0;
-    b2ShapeDef shapeDef = b2DefaultShapeDef();
-    b2CreateCircleShape(playerBody, &shapeDef, &playerCircle);
-
-    bodies.add(playerBody);
-
-    b2BodyDef boxDef = b2DefaultBodyDef();
-    boxDef.type = b2_dynamicBody;
-    b2BodyId box = b2CreateBody(worldId, &boxDef);
-
-    b2Polygon boxShape = b2MakeBox(1.0, 1.0);
-    shapeDef = b2DefaultShapeDef();
-    b2CreatePolygonShape(box, &shapeDef, &boxShape);
-
-    bodies.add(box);
+    add_body_box(vec2(), vec2(10.0, 10.0), b2_dynamicBody);
 
     Player player;
     player.speed = 100;
@@ -61,7 +34,7 @@ bool GameState::initialize()
 }
 
 void GameState::update(double elapsed_time, double delta_time, const Input& input)
-{  
+{
     const int targetTicksPerSecond = 40;
     const double tickTime = 1.0 / double(targetTicksPerSecond);
     double simulationTime = ticks * tickTime;
@@ -72,7 +45,7 @@ void GameState::update(double elapsed_time, double delta_time, const Input& inpu
         ticks += 1;
         simulationTime = ticks * tickTime;
     }
-    
+
 
     for (auto& object : game_objects)
     {
@@ -144,4 +117,9 @@ vec2 get_input_direction(const Input& input)
         dir = dir.normalized();
 
     return dir;
+}
+
+int spatial_hash(vec2 pos)
+{
+    return int(floor(pos.x) * 962623) ^ int(floor(pos.y) * 1193771);
 }

@@ -1,4 +1,5 @@
 #include "application.h"
+#include "log.h"
 
 #include <iostream>
 #include <SDL3_image/SDL_image.h>
