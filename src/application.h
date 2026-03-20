@@ -79,8 +79,7 @@ private:
     void set_event_active(int event_index, double timeout_seconds);
     void set_event_deactive(int event_index);
 
-    bool load_assets();
-    bool game_load_assets(String_Builder& sb);  // helper
+    bool read_asset_catalog();
 
     bool mouse_input();
     bool keyboard_input(SDL_KeyboardEvent keyboard);

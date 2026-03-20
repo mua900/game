@@ -18,7 +18,7 @@ void log_info(const char* format, ...)
     int written = snprintf(buffer, 256, "INFO: ");
     vsnprintf(buffer + written, 256 - written, format, forward_args);
 
-    fprintf(stdout, "%s\n", buffer);
+    fprintf(stderr, "%s\n", buffer);
 
     va_end(args);
 }

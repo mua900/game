@@ -36,7 +36,7 @@ AssetParseLineResult asset_parse_line(String line, Asset& pointer)
         return ASSET_LINE_IS_COMMENT;
     }
 
-    String texture = make_string("texture");
+    String image = make_string("image");
     String audio = make_string("audio");
     String shader = make_string("shader");
 
@@ -45,10 +45,10 @@ AssetParseLineResult asset_parse_line(String line, Asset& pointer)
 
     AssetKind asset_kind;
 
-    if (string_starts_with(line, texture))
+    if (string_starts_with(line, image))
     {
-        asset_kind = ASSET_KIND_TEXTURE;
-        cursor += texture.size;
+        asset_kind = ASSET_KIND_IMAGE;
+        cursor += image.size;
     }
     else if (string_starts_with(line, audio))
     {
@@ -164,7 +164,9 @@ bool parse_assets(const char* description, AssetCatalog& catalog)
             }
             else if (!(result & ASSET_LINE_IS_OPTIONAL))
             {
-                log_error("Could not parse line %d in %s asset description\n", line_number, description);
+                SCOPE_STRING(line, line_cstr);
+                log_error("Could not parse line %d in %s asset description", line_number, description);
+                log_info("Line: %s", line_cstr);
                 return false;
             }
         }
@@ -209,7 +211,7 @@ bool load_asset(Asset& asset, AssetLoadContext& load_context)
 
     switch (asset.kind)
     {
-        case ASSET_KIND_TEXTURE: {
+        case ASSET_KIND_IMAGE: {
             SDL_Texture* texture = IMG_LoadTexture(load_context.renderer, path);
             if (!texture)
             {
@@ -217,7 +219,7 @@ bool load_asset(Asset& asset, AssetLoadContext& load_context)
                 return false;
             }
 
-            asset.data.texture.texture = texture;
+            asset.data.image.texture = texture;
             asset.identifier.generation += 1;
 
             return true;

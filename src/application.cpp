@@ -47,16 +47,21 @@ bool Application::initialize()
         m_render = { vec2(render_size_x, render_size_y), renderer };
     }
 
-    // ttf
     {
         if (!TTF_Init())
         {
-            fprintf(stderr, "Could not initialize TTF\n");
+            fprintf(stderr, "Could not initialize TTF: %s\n", SDL_GetError());
+            return false;
+        }
+
+        if (!MIX_Init())
+        {
+            fprintf(stderr, "Could not initialize MIX: %s\n", SDL_GetError());
             return false;
         }
     }
 
-    if (!load_assets()) {
+    if (!read_asset_catalog()) {
         fprintf(stderr, "Could not load assets\n");
         return false;
     }
@@ -100,55 +105,18 @@ Text Application::create_text(String text, Font font, Color color)
     String path_separator = make_string("/");
 #endif
 
-bool Application::load_assets()
+bool Application::read_asset_catalog()
 {
     String_Builder sb(256);
     const char* base_path = SDL_GetBasePath();
 
     sb.append(make_string(base_path));
 
-    bool load_from_base_path = game_load_assets(sb);
-
-    // -----
-
     const char* desc_name = "run_tree.txt";
     sb.append(make_string(desc_name));
     bool parse_description = parse_assets(sb.c_string(), m_catalog);
 
-    // -----
-
-    return load_from_base_path;
-}
-
-bool Application::game_load_assets(String_Builder& sb) {
-    printf("Searching for assets in %s\n", sb.c_string());
-
-    String asset_folder = make_string("asset");
-    sb.append(asset_folder);
-    sb.append(path_separator);
-
-    // font
-    {
-        String folder = make_string("font");
-        sb.append(folder);
-        sb.append(path_separator);
-
-        bool small_font = load_font(&m_assets.font_small, sb, make_string("Fira_Sans"), make_string("FiraSans-Regular.ttf"), FONT_SIZE_SMALL);
-        bool medium_font = load_font(&m_assets.font_medium, sb, make_string("Fira_Sans"), make_string("FiraSans-Regular.ttf"), FONT_SIZE_MEDIUM);
-        bool large_font = load_font(&m_assets.font_large, sb, make_string("Fira_Sans"), make_string("FiraSans-Regular.ttf"), FONT_SIZE_LARGE);
-
-        sb.remove(folder.size + 1);
-
-        if (!(small_font && medium_font && large_font))
-        {
-            fprintf(stderr, "Could not load fonts\n");
-            return false;
-        }
-    }
-
-    sb.remove(asset_folder.size + path_separator.size);
-
-    return true;
+    return parse_description;
 }
 
 bool load_font(Font* font, String_Builder& path, String font_folder, String font_file, float size)

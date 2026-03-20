@@ -9,7 +9,7 @@
 #include "draw.h"
 
 enum AssetKind {
-    ASSET_KIND_TEXTURE,
+    ASSET_KIND_IMAGE,
     ASSET_KIND_AUDIO,
     ASSET_KIND_FONT,
     ASSET_KIND_SHADER,
@@ -41,7 +41,7 @@ struct FontResource {
     Font font;
 };
 
-struct TextureResource {
+struct ImageResource {
     Texture texture;
 };
 
@@ -58,7 +58,7 @@ struct Asset {
     AssetId identifier;
     union {
         FontResource font;
-        TextureResource texture;
+        ImageResource image;
         AudioResource audio;
     } data;
 };
@@ -75,7 +75,7 @@ struct AssetCatalog {
         assets.get_ref(index).identifier.generation = 0;
     }
 
-    const TextureResource* get_texture(AssetId id)
+    const ImageResource* get_image(AssetId id)
     {
         if (!id.valid())
         {
@@ -83,12 +83,12 @@ struct AssetCatalog {
         }
 
         const Asset& asset = assets.get_ref(id.id);
-        if (asset.kind != ASSET_KIND_TEXTURE || asset.identifier.generation != id.generation)
+        if (asset.kind != ASSET_KIND_IMAGE || asset.identifier.generation != id.generation)
         {
             return nullptr;
         }
 
-        return &asset.data.texture;
+        return &asset.data.image;
     }
 
     const FontResource* get_font(AssetId id)
