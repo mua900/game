@@ -61,25 +61,9 @@ bool Application::initialize()
         return false;
     }
 
-    if (!m_audio.audio_player.initialize(DESIRED_AUDIO_SAMPLE_RATE, 2, 0.5)) {
+    if (!m_audio_player.create()) {
         fprintf(stderr, "Failed to initialize audio player: %s\n", SDL_GetError());
         return false;
-    }
-
-    {
-        AudioPlayer2 player;
-
-        if (!MIX_Init())
-        {
-            fprintf(stderr, "Could not initialize SDL mixer library\n");
-            return false;
-        }
-
-        player.simple_player = &m_audio.audio_player;
-        if (!player.create())
-        {
-            return false;
-        }
     }
 
     quit = false;
@@ -314,9 +298,10 @@ void Application::set_event_deactive(int event_index)
 
 void Application::cleanup()
 {
-    m_audio.audio_player.destroy();
+    m_audio_player.cleanup();
 
     SDL_Quit();
+    MIX_Quit();
 }
 
 void Application::draw()
@@ -415,53 +400,4 @@ void Application::render_dropdown(const Drop_Down_List& list, Color title_color,
 bool Application::mouse_input()
 {
     return false;
-}
-
-bool AudioData::load_audio_file(String path) {
-    SCOPE_STRING(path, path_c_str);
-
-    u8* output_buffer;
-    int output_length = 0;
-
-    // the spec we want
-    SDL_AudioSpec desired_spec;
-    desired_spec.channels = 2;
-    desired_spec.format = SDL_AUDIO_F32;
-    desired_spec.freq = 48000;
-
-    {
-        // @todo other file formats than wav
-        // @todo don't change channel counts
-
-        SDL_AudioSpec spec;  // output parameter
-        u8* buffer = nullptr;
-        u32 audio_length = 0;
-        if (!SDL_LoadWAV(path_c_str, &spec, &buffer, &audio_length)) {
-            fprintf(stderr, "Couldn't load audio file %s: %s\n", path_c_str, SDL_GetError());
-            return false;
-        }
-
-        printf("%s\n", SDL_GetAudioFormatName(spec.format));
-
-        bool convert_success = SDL_ConvertAudioSamples(&spec, buffer, audio_length, &desired_spec, &output_buffer, &output_length);
-
-        SDL_free(buffer);
-        audio_length = 0;
-
-        if (!convert_success)
-        {
-            fprintf(stderr, "Couldn't convert audio samples to desired spec. %s\n", SDL_GetError());
-            return false;
-        }
-    }
-
-    samples = output_buffer;
-    channel_count = desired_spec.channels;
-    format = desired_spec.format;
-    frequency = desired_spec.freq;
-    frame_count = output_length / (SDL_AUDIO_BYTESIZE(desired_spec.format) * desired_spec.channels);
-
-    ASSERT(is_in_desired_spec());
-
-    return true;
 }

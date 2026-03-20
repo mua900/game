@@ -39,12 +39,6 @@ enum Events {
     EVENT_COUNT,
 };
 
-struct AudioContext {
-    AudioPlayer audio_player = {};
-    AudioPlayer2 player = {};
-    AudioData audio_data = {};
-};
-
 class Application {
 public:
     GameState game_state = {};
@@ -57,7 +51,7 @@ public:
 
     Assets m_assets = {};
     AssetCatalog m_catalog = {};
-    AudioContext m_audio;
+    AudioPlayer m_audio_player = {};
 
     Ui_State m_ui = {};
     Color m_background_color = DEFAULT_BACKGROUND_COLOR;

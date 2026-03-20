@@ -9,7 +9,7 @@
 #include "draw.h"
 
 enum AssetKind {
-    ASSET_KIND_IMAGE,
+    ASSET_KIND_TEXTURE,
     ASSET_KIND_AUDIO,
     ASSET_KIND_FONT,
     ASSET_KIND_SHADER,
@@ -27,7 +27,26 @@ static const AssetId NullAssetId = AssetId {-1, 0};
 
 struct AssetLoadContext {
     SDL_Renderer* renderer;
-    // other relevant stuff as the codebase evolves
+    AudioPlayer* audio_player;
+};
+
+// resource types
+// thin wrappers around more specific types
+
+struct AudioResource {
+    MIX_Audio* audio;
+};
+
+struct FontResource {
+    Font font;
+};
+
+struct TextureResource {
+    Texture texture;
+};
+
+struct ShaderResource {
+    // @todo
 };
 
 struct Asset {
@@ -38,9 +57,9 @@ struct Asset {
 
     AssetId identifier;
     union {
-        Font font;
-        Texture texture;  // for image
-        AudioData audio;
+        FontResource font;
+        TextureResource texture;
+        AudioResource audio;
     } data;
 };
 
@@ -56,7 +75,7 @@ struct AssetCatalog {
         assets.get_ref(index).identifier.generation = 0;
     }
 
-    const Texture* get_texture(AssetId id)
+    const TextureResource* get_texture(AssetId id)
     {
         if (!id.valid())
         {
@@ -64,7 +83,7 @@ struct AssetCatalog {
         }
 
         const Asset& asset = assets.get_ref(id.id);
-        if (asset.kind != ASSET_KIND_IMAGE || asset.identifier.generation != id.generation)
+        if (asset.kind != ASSET_KIND_TEXTURE || asset.identifier.generation != id.generation)
         {
             return nullptr;
         }
@@ -72,7 +91,7 @@ struct AssetCatalog {
         return &asset.data.texture;
     }
 
-    const Font* get_font(AssetId id)
+    const FontResource* get_font(AssetId id)
     {
         if (!id.valid())
         {
@@ -88,7 +107,7 @@ struct AssetCatalog {
         return &asset.data.font;
     }
 
-    const AudioData* get_audio(AssetId id)
+    const AudioResource* get_audio(AssetId id)
     {
         if (!id.valid())
         {

@@ -6,89 +6,20 @@
 #include "common.h"
 #include "template.h"
 
-// @todo replace with sdl mixer
+using TrackId = u32;
+static const TrackId NullTrackId = -1;
 
-// @todo speed control for playback maybe? Take a look at FrequencyRatio.
-
-#define AUDIO_MAX_CHANNELS 8
-
-// @todo delete
-#define DESIRED_AUDIO_FORMAT SDL_AUDIO_F32
-#define DESIRED_AUDIO_SAMPLE_RATE 48000
-#define DESIRED_AUDIO_CHANNEL_COUNT 2
-
-struct AudioData {
-    void* samples;
-    SDL_AudioFormat format;
-    int channel_count;
-    int frequency;
-    int frame_count;
-
-    void init()
-    {
-        samples = nullptr;
-        format = DESIRED_AUDIO_FORMAT;
-        channel_count = 0;
-        frequency = 0;
-        frame_count = 0;
-    }
-
-    void reset()
-    {
-        if (samples) {
-            free(samples);
-        }
-        init();
-    }
-
-    bool is_in_desired_spec()
-    {
-        return (samples != nullptr) && (format == DESIRED_AUDIO_FORMAT) && (channel_count == DESIRED_AUDIO_CHANNEL_COUNT) && (frequency == DESIRED_AUDIO_SAMPLE_RATE);
-    }
-
-    bool load_audio_file(String path);
-};
-
-// @todo a more complete audio player
-struct AudioPlayer
-{
-    AudioData* audio_data = {};  // reference
+struct AudioPlayer {
     SDL_AudioDeviceID device = {};
-    SDL_AudioStream* stream = {};
-    int playback_position = 0;
-
-    double volume = 0.0;
-    double pan = 0.0;
-    bool paused = true;
-
-    bool initialize(int freq, int channels, double vol);
-    void destroy();
-
-    bool set_audio_data(AudioData* data);
-    void reset_audio_data();
-
-    void put_audio_data();
-
-    void pause();
-    void resume();
-    void toggle_pause();
-    void set_volume(double volume);
-    double get_volume() const;
-    double get_pan() const { return pan; }
-    void set_pan(float p) { pan = p; }
-};
-
-// @todo
-struct AudioPlayer2 {
-    AudioPlayer* simple_player;
     MIX_Mixer* mixer;
+    // each track owns a single audio to play and we can query from SDL_mixer the audio object so we don't need to store it separately
     DArray<MIX_Track*> tracks;
-    DArray<MIX_Audio*> sounds;
 
     bool create();
     void cleanup();
-    int add_track();
-    void remove_track(int index);
+    MIX_Audio* load_audio(const char* path);
+    TrackId add_track(const char* path, const char* track_tag);
+    TrackId make_track(MIX_Audio* audio, const char* track_tag);
     int get_track_count() const { return tracks.size(); }
-    bool load_audio(const char* path, bool p_predecode = false);
+    void remove_track(int index);
 };

@@ -36,7 +36,7 @@ AssetParseLineResult asset_parse_line(String line, Asset& pointer)
         return ASSET_LINE_IS_COMMENT;
     }
 
-    String image = make_string("image");
+    String texture = make_string("texture");
     String audio = make_string("audio");
     String shader = make_string("shader");
 
@@ -45,10 +45,10 @@ AssetParseLineResult asset_parse_line(String line, Asset& pointer)
 
     AssetKind asset_kind;
 
-    if (string_starts_with(line, image))
+    if (string_starts_with(line, texture))
     {
-        asset_kind = ASSET_KIND_IMAGE;
-        cursor += image.size;
+        asset_kind = ASSET_KIND_TEXTURE;
+        cursor += texture.size;
     }
     else if (string_starts_with(line, audio))
     {
@@ -209,7 +209,7 @@ bool load_asset(Asset& asset, AssetLoadContext& load_context)
 
     switch (asset.kind)
     {
-        case ASSET_KIND_IMAGE: {
+        case ASSET_KIND_TEXTURE: {
             SDL_Texture* texture = IMG_LoadTexture(load_context.renderer, path);
             if (!texture)
             {
@@ -217,24 +217,26 @@ bool load_asset(Asset& asset, AssetLoadContext& load_context)
                 return false;
             }
 
-            asset.data.texture = texture;
+            asset.data.texture.texture = texture;
             asset.identifier.generation += 1;
 
             return true;
         }
         case ASSET_KIND_AUDIO: {
-            if (!asset.data.audio.load_audio_file(asset.path))
+            MIX_Audio* audio = load_context.audio_player->load_audio(path);
+            if (!audio)
             {
                 asset.identifier.id = -1;
                 return false;
             }
 
+            asset.data.audio.audio = audio;
             asset.identifier.generation += 1;
 
             return true;
         }
         case ASSET_KIND_FONT: {
-            bool success = load_font_file(&asset.data.font, path, asset.data.font.size);
+            bool success = load_font_file(&asset.data.font.font, path, asset.data.font.font.size);
             if (!success)
             {
                 asset.identifier.id = -1;
