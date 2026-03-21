@@ -124,7 +124,12 @@ struct AssetCatalog {
     }
 };
 
-bool parse_assets(const char* description, AssetCatalog& catalog);
+// parse asset catalog file and add assets listed in it to the catalog
+bool parse_asset_description(const char* description, AssetCatalog& catalog);
+// load the file pointed to by path and call parse_asset_description on it and return it's result
+bool parse_assets(const char* path, AssetCatalog& catalog);
+// returns the existing handle if the asset is already loaded otherwise loads the asset on the fly and returns the handle
+// returns null id if no asset with the given name is found or the asset load fails
 AssetId get_asset(const char* name, AssetCatalog& catalog);
 
 #endif // _ASSET_H

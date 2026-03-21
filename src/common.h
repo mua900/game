@@ -303,6 +303,14 @@ inline vec2 operator*(float s, vec2 v)
 {
     return vec2(v.x * s, v.y * s);
 }
+inline vec2 operator/(vec2 v, float s)
+{
+    return vec2(v.x / s, v.y / s);
+}
+inline vec2 operator*(vec2 a, vec2 b)
+{
+    return vec2(a.x * b.x, a.y * b.y);
+}
 
 vec2 get_direction_vector(float angle);
 

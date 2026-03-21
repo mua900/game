@@ -132,15 +132,20 @@ bool parse_assets(const char* description, AssetCatalog& catalog)
         return false;
     }
 
+    return parse_asset_description(file_contents.c_string(), catalog);
+}
+
+bool parse_asset_description(const char* description, AssetCatalog& catalog)
+{
     int cursor = 0;
     int line_number = 0;
 
-    String file = file_contents.to_string();
-    while (cursor < file.size)
+    String desc = make_string(description);
+    while (cursor < desc.size)
     {
-        String line = string_slice_to_character(file, cursor, '\n');
+        String line = string_slice_to_character(desc, cursor, '\n');
         int next_line_offset = cursor + line.size;
-        next_line_offset += string_match_character(file, next_line_offset, '\n');
+        next_line_offset += string_match_character(desc, next_line_offset, '\n');
 
         Asset asset = {};
         auto result = asset_parse_line(line, asset);
@@ -153,7 +158,7 @@ bool parse_assets(const char* description, AssetCatalog& catalog)
 
             if (result & ASSET_LINE_HAS_TRAILING_TOKENS)
             {
-                log_warning("Asset description file %s has trailing tokens on line %d\n", description, line_number);
+                log_warning("Asset description has trailing tokens on line %d\n", description, line_number);
             }
         }
         else

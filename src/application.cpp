@@ -14,7 +14,7 @@ bool Application::initialize()
     }
 
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
-        fprintf(stderr, "Failed to init SDL\n");
+        SDL_Log("Failed to init SDL: %s\n", SDL_GetError());
         return false;
     }
 
@@ -153,8 +153,6 @@ bool load_font_file(Font* font, const char* path, float size)
 
 void Application::handle_events()
 {
-    update_keyboard_state();
-
     SDL_Event e = {};
     while (SDL_PollEvent(&e))
     {
@@ -201,6 +199,8 @@ void Application::handle_events()
             }
         }
     }
+
+    update_keyboard_state();
 }
 
 bool Application::keyboard_input(SDL_KeyboardEvent keyboard)
@@ -268,8 +268,8 @@ void Application::cleanup()
 {
     m_audio_player.cleanup();
 
-    SDL_Quit();
     MIX_Quit();
+    SDL_Quit();
 }
 
 void Application::draw()

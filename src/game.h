@@ -30,7 +30,6 @@ struct Transform {
     vec2 scale;
     float rotation;
     ObjectId object;
-    b2BodyId body;  // 8
 };
 
 struct TransformLight {
@@ -114,14 +113,16 @@ struct Wall {
 struct Player {
     float speed;
     Transform transform;
+    b2BodyId body;
 
     Player() {}
 };
 
 struct Enemy {
     TransformLight transform;
+    b2BodyId body;
 
-    Enemy(TransformLight tr) : transform(tr) {}
+    Enemy(TransformLight tr, b2BodyId body) : transform(tr), body(body) {}
 };
 
 struct GameObject {
@@ -260,11 +261,13 @@ struct GameState {
     bool initialize();
     void cleanup();
     void update(double elapsed_time, double delta_time, const Input& input);
-    void fixed_update(double timeStep);
+    void frame_update(double elapsed_time, double delta_time, const Input& input);
+    void fixed_update(u32 tick, double timeStep, const Input& input);
 
-    void add_object(GameObject& obj)
+    ObjectId add_object(GameObject& obj)
     {
         int object_index = game_objects.add(obj);
+        return ObjectId(object_index);
     }
 
     void remove_object(ObjectId object)
@@ -278,19 +281,15 @@ b2BodyId make_body_circle(b2WorldId worldId, vec2 position, float radius, b2Body
 
 void translate(vec2& pos, vec2 translate, b2BodyId body = b2_nullBodyId);
 void rotate(vec2& direction, float amount, b2BodyId body = b2_nullBodyId);
-void scale(vec2& scale, float factor, b2BodyId body = b2_nullBodyId);
 
 void translate(TransformLight& transform, vec2 translate, b2BodyId body = b2_nullBodyId);
 void rotate(TransformLight& transform, float amount, b2BodyId body = b2_nullBodyId);
-void scale(TransformLight& transform, float factor, b2BodyId = b2_nullBodyId);
 
-void translate(b2BodyId body, vec2 translate);
-void rotate(b2BodyId body, float amount);
-void scale(b2BodyId body, float factor);
+void translate_body(b2BodyId body, vec2 translate);
+void rotate_body(b2BodyId body, float amount);
 
-void translate(Transform& pos, vec2 translate);
-void rotate(Transform& direction, float amount);
-void scale(Transform& scale, float factor);
+void translate(Transform& transform, vec2 translate, b2BodyId body = b2_nullBodyId);
+void rotate(Transform& transform, float amount, b2BodyId body = b2_nullBodyId);
 
 AABB translate_bounding_box(AABB original, vec2 translation);
 AABB scale_bounding_box(AABB original, vec2 scale);
