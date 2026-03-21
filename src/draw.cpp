@@ -2,6 +2,13 @@
 
 void draw_game(RenderContext context, const GameState& state)
 {
+#if PHYSICS_DEBUG
+    float w = 50;
+    float h = 50;
+    Rectangle area = { state.target_move_pos.x, state.target_move_pos.y, w, h };
+    render_rectangle(context, area, Color(0xFF, 0, 0, 0xFF));
+#endif
+
     for (const auto object : state.game_objects)
     {
         switch (object.type)
@@ -19,9 +26,9 @@ void draw_game(RenderContext context, const GameState& state)
             case GOT_Player:
             {
                 const Player& player = object.player;
-                SDL_FRect area = { player.transform.position.x, player.transform.position.y, player.transform.scale.x, player.transform.scale.y };
-                SDL_SetRenderDrawColor(context.renderer, 0xAA, 0x66, 0x99, 0xff);
-                SDL_RenderFillRect(context.renderer, &area);
+                vec2 position = player.transform.get_position();
+                Rectangle area = { position.x, position.y, playerScale.x, playerScale.y };
+                render_rectangle(context, area, Color(0xAA, 0x66, 0x99, 0xff));
 
                 break;
             }
@@ -38,16 +45,21 @@ void draw_ui(RenderContext context)
     // @todo
 }
 
-void render_textured_rectangle(RenderContext context, Rectangle rect, SDL_Texture* texture, Color color)
+void render_rectangle(RenderContext context, Rectangle rect, Color color)
 {
     SDL_SetRenderDrawColor(context.renderer, COLOR_ARG(color));
-    SDL_FRect area = { rect.x, rect.y, rect.w, rect.h };
+    SDL_FRect area = { rect.x - rect.w / 2, rect.y - rect.h / 2, rect.w, rect.h  };
     SDL_RenderFillRect(context.renderer, &area);
+}
+
+void render_textured_rectangle(RenderContext context, Rectangle rect, SDL_Texture* texture, Color color)
+{
+    render_rectangle(context, rect, color);
 
     float tex_w, tex_h;
     SDL_GetTextureSize(texture, &tex_w, &tex_h);
     SDL_FRect src = {0,0,tex_w,tex_h};
-    SDL_FRect dst = area;
+    SDL_FRect dst = { rect.x - rect.w / 2, rect.y - rect.h / 2, rect.w, rect.h  };
     SDL_RenderTexture(context.renderer, texture, &src, &dst);
 }
 

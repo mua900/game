@@ -8,6 +8,8 @@
 
 #include "box2d/box2d.h"
 
+#define PHYSICS_DEBUG 0
+
 enum GameObjectType {
     GOT_Wall,
     GOT_Player,
@@ -25,17 +27,25 @@ enum GameObjectType {
 using ObjectId = u32;
 
 struct Transform {
-    vec2 position;
+    b2BodyId body;
     vec2 velocity;
-    vec2 scale;
-    float rotation;
-    ObjectId object;
-};
 
-struct TransformLight {
-    vec2 position;
-    float direction;  // in angles between 0 and 2PI
-    float velocity;   // velocity magnitude in the direction
+    vec2 get_position() const
+    {
+        b2Transform transform = b2Body_GetTransform(body);
+        return vec2(transform.p.x, transform.p.y);
+    }
+
+    vec2 get_direction() const
+    {
+        b2Transform transform = b2Body_GetTransform(body);
+        return vec2(transform.q.c, transform.q.s);
+    }
+
+    void set_velocity(vec2 vel)
+    {
+        b2Body_SetLinearVelocity(body, b2Vec2 { vel.x, vel.y });
+    }
 };
 
 struct AABB {
@@ -96,9 +106,9 @@ struct EnergyGate {
 };
 
 struct Mirror {
-    TransformLight transform;
+    Transform transform;
 
-	Mirror(TransformLight transform) : transform(transform) {}
+	Mirror(Transform transform) : transform(transform) {}
 };
 
 struct Wall {
@@ -110,19 +120,20 @@ struct Wall {
     {}
 };
 
+static const vec2 playerScale = vec2(50, 50);
+
 struct Player {
     float speed;
     Transform transform;
-    b2BodyId body;
 
     Player() {}
 };
 
 struct Enemy {
-    TransformLight transform;
+    Transform transform;
     b2BodyId body;
 
-    Enemy(TransformLight tr, b2BodyId body) : transform(tr), body(body) {}
+    Enemy(Transform tr, b2BodyId body) : transform(tr), body(body) {}
 };
 
 struct GameObject {
@@ -258,6 +269,10 @@ struct GameState {
 
     b2WorldId worldId = {};
 
+#if PHYSICS_DEBUG
+    vec2 target_move_pos = {};
+#endif
+
     bool initialize();
     void cleanup();
     void update(double elapsed_time, double delta_time, const Input& input);
@@ -282,14 +297,11 @@ b2BodyId make_body_circle(b2WorldId worldId, vec2 position, float radius, b2Body
 void translate(vec2& pos, vec2 translate, b2BodyId body = b2_nullBodyId);
 void rotate(vec2& direction, float amount, b2BodyId body = b2_nullBodyId);
 
-void translate(TransformLight& transform, vec2 translate, b2BodyId body = b2_nullBodyId);
-void rotate(TransformLight& transform, float amount, b2BodyId body = b2_nullBodyId);
+void translate_body(b2BodyId body, vec2 translate, double timeStep);
+void rotate_body(b2BodyId body, float amount, double timeStep);
 
-void translate_body(b2BodyId body, vec2 translate);
-void rotate_body(b2BodyId body, float amount);
-
-void translate(Transform& transform, vec2 translate, b2BodyId body = b2_nullBodyId);
-void rotate(Transform& transform, float amount, b2BodyId body = b2_nullBodyId);
+void translate(Transform& transform, vec2 translate, double timeStep);
+void rotate(Transform& transform, float amount, double timeStep);
 
 AABB translate_bounding_box(AABB original, vec2 translation);
 AABB scale_bounding_box(AABB original, vec2 scale);

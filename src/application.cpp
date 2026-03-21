@@ -13,6 +13,7 @@ bool Application::initialize()
         return false;
     }
 
+
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         SDL_Log("Failed to init SDL: %s\n", SDL_GetError());
         return false;
@@ -27,14 +28,14 @@ bool Application::initialize()
         SDL_Window* window = SDL_CreateWindow("soundtoy", 1440, 810, flags);
         if (!window)
         {
-            fprintf(stderr, "Failed to create window\n");
+            SDL_Log("Failed to create window with SDL: %s\n", SDL_GetError());
             return false;
         }
 
         SDL_Renderer* renderer = SDL_CreateRenderer(window, nullptr);
         if (!renderer)
         {
-            fprintf(stderr, "Failed to create renderer\n");
+            SDL_Log("Failed to create renderer with SDL: %s\n", SDL_GetError());
             return false;
         }
 
@@ -62,12 +63,12 @@ bool Application::initialize()
     }
 
     if (!read_asset_catalog()) {
-        fprintf(stderr, "Could not load assets\n");
+        log_error("Could not load assets\n");
         return false;
     }
 
     if (!m_audio_player.create()) {
-        fprintf(stderr, "Failed to initialize audio player: %s\n", SDL_GetError());
+        log_error("Failed to initialize audio player: %s\n", SDL_GetError());
         return false;
     }
 

@@ -11,12 +11,9 @@ bool GameState::initialize()
     worldId = b2CreateWorld(&worldDef);
 
     const vec2 playerPosition = vec2(500, 500);
-    const vec2 playerScale = vec2(50, 50);
     Player player;
     player.speed = 100;
-    player.transform.position = playerPosition;
-    player.transform.scale = playerScale;
-    player.body = make_body_circle(worldId, playerPosition, 10.0, b2_kinematicBody);
+    player.transform.body = make_body_circle(worldId, playerPosition, 10.0, b2_kinematicBody);
     GameObject player_object = GameObject(player);
 
     vec2 wallPosition = vec2(100, 100);
@@ -35,7 +32,7 @@ bool GameState::initialize()
 
 void GameState::update(double elapsed_time, double delta_time, const Input& input)
 {
-    const int targetTicksPerSecond = 40;
+    const int targetTicksPerSecond = 60;
     const double tickTime = 1.0 / double(targetTicksPerSecond);
     double simulationTime = this->ticks * tickTime;
     while (elapsed_time > simulationTime)
@@ -51,42 +48,58 @@ void GameState::update(double elapsed_time, double delta_time, const Input& inpu
 
 void GameState::frame_update(double elapsed_time, double delta_time, const Input& input)
 {
+    /*
     for (auto& object : game_objects)
     {
         switch (object.type)
         {
-            case GOT_Wall: {
-                break;
-            }
+            case GOT_Wall: { break; }
             case GOT_Player: {
-                Player& player = object.player;
-
-                vec2 velocity = player.speed * get_input_direction(input) * delta_time;
-                translate(player.transform, velocity, player.body);
-
                 break;
             }
-            case GOT_Enemy: {
-                Enemy& enemy = object.enemy;
-
-                vec2 dir = get_direction_vector(enemy.transform.direction);
-                vec2 velocity = dir * enemy.transform.velocity;
-                vec2 move = velocity * delta_time;
-                b2Transform target_transform = b2Body_GetTransform(enemy.body);
-                target_transform.p.x += move.x;
-                target_transform.p.y += move.y;
-                b2Body_SetTargetTransform(enemy.body, target_transform, delta_time);
-                enemy.transform.position += velocity * delta_time;
-
-                break;
-            }
+            case GOT_Enemy: { break; }
+            case GOT_LaserEmitter: { break; }
+            case GOT_LaserCollector: { break; }
+            case GOT_Mirror: { break; }
+            case GOT_LaserReflector: { break; }
+            case GOT_WavelengthShifter: { break; }
+            case GOT_LaserSplitter: { break; }
+            case GOT_EnergyGate: { break; }
+            case GOT_EnergySource: { break; }
         }
     }
+    */
 }
 
 void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
 {
     b2World_Step(worldId, timeStep, 4);
+
+    for (auto& object : game_objects)
+    {
+        switch (object.type)
+        {
+            case GOT_Wall: { break; }
+            case GOT_Player: {
+                Player& player = object.player;
+                vec2 velocity = player.speed * get_input_direction(input);
+                player.transform.set_velocity(velocity);
+#if PHYSICS_DEBUG
+                target_move_pos = player.transform.get_position() + velocity;
+#endif
+                break;
+            }
+            case GOT_Enemy: { break; }
+            case GOT_LaserEmitter: { break; }
+            case GOT_LaserCollector: { break; }
+            case GOT_Mirror: { break; }
+            case GOT_LaserReflector: { break; }
+            case GOT_WavelengthShifter: { break; }
+            case GOT_LaserSplitter: { break; }
+            case GOT_EnergyGate: { break; }
+            case GOT_EnergySource: { break; }
+        }
+    }
 }
 
 void GameState::cleanup()
@@ -156,33 +169,30 @@ b2BodyId make_body_circle(b2WorldId worldId, vec2 position, float radius, b2Body
     return body;
 }
 
-void translate_body(b2BodyId body, vec2 translate) {
+void translate_body(b2BodyId body, vec2 translate, double timeStep) {
     b2Transform transform = b2Body_GetTransform(body);
     transform.p.x += translate.x;
     transform.p.y += translate.y;
-    b2Body_SetTargetTransform(body, transform, 0.025);
+    b2Body_SetTargetTransform(body, transform, timeStep);
 }
 
-void rotate_body(b2BodyId body, float amount) {
+void rotate_body(b2BodyId body, float amount, double timeStep) {
     b2Transform transform = b2Body_GetTransform(body);
     float rotation_angle = b2Rot_GetAngle(transform.q) + amount;
     b2Rot rotation = b2MakeRot(rotation_angle);
     transform.q = rotation;
 
-    b2Body_SetTargetTransform(body, transform, 0.025);
+    b2Body_SetTargetTransform(body, transform, timeStep);
 }
 
-void translate(Transform& transform, vec2 translation, b2BodyId body)
+void translate(Transform& transform, vec2 translation, double timeStep)
 {
-    transform.position += translation;
-    translate_body(body, translation);
+    translate_body(transform.body, translation, timeStep);
 }
 
-void rotate(Transform& transform, float amount, b2BodyId body)
+void rotate(Transform& transform, float amount, double timeStep)
 {
-    transform.rotation += amount;
-    transform.rotation = fmodf(transform.rotation, 2.0f * CONSTANT_PI);
-    rotate_body(body, amount);
+    rotate_body(transform.body, amount, timeStep);
 }
 
 AABB translate_bounding_box(AABB original, vec2 translation)

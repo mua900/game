@@ -13,6 +13,7 @@ struct RenderContext {
     SDL_Renderer* renderer = nullptr;
 };
 
+void render_rectangle(RenderContext context, Rectangle rect, Color color);
 void render_textured_rectangle(RenderContext context, Rectangle rect, SDL_Texture* texture, Color color);
 
 void draw_game(RenderContext context, const GameState& state);
