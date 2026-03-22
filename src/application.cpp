@@ -25,7 +25,7 @@ bool Application::initialize()
 
         SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE |
                                 SDL_WINDOW_HIDDEN;  // show the window after the initialization is complete
-        SDL_Window* window = SDL_CreateWindow("soundtoy", 1440, 810, flags);
+        SDL_Window* window = SDL_CreateWindow("game", 1440, 810, flags);
         if (!window)
         {
             SDL_Log("Failed to create window with SDL: %s\n", SDL_GetError());
@@ -47,6 +47,14 @@ bool Application::initialize()
         SDL_GetRenderOutputSize(renderer, &render_size_x, &render_size_y);
         m_render = { vec2(render_size_x, render_size_y), renderer };
     }
+
+#if PHYSICS_DEBUG
+    phys_debug_draw = b2DefaultDebugDraw();
+    phys_debug_draw.context = m_render.renderer;  // SDL_Renderer *
+    phys_debug_draw.DrawSolidPolygonFcn = draw_solid_polygon_b2;
+    phys_debug_draw.DrawCircleFcn = draw_circle_b2;
+    m_render.phys_draw = phys_debug_draw;
+#endif
 
     {
         if (!TTF_Init())

@@ -67,6 +67,10 @@ public:
 
     bool quit = false;
 
+#if PHYSICS_DEBUG
+    b2DebugDraw phys_debug_draw;
+#endif
+
     bool initialize();
 
     void handle_events();

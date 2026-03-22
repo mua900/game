@@ -268,6 +268,10 @@ struct vec2 {
         return vec2(x/mag,y/mag);
     }
 
+    float magnitude() const {
+        return sqrtf(x * x + y * y);
+    }
+
     void operator+=(const vec2 other)
     {
         x += other.x;
@@ -286,6 +290,9 @@ struct vec2 {
         y *= s;
     }
 };
+
+inline vec2 operator-(const vec2 v)
+{ return vec2(-v.x, -v.y); }
 
 inline vec2 operator+(const vec2 a, const vec2 b)
 {

@@ -12,8 +12,8 @@
 
 enum GameObjectType {
     GOT_Wall,
+    GOT_Ball,
     GOT_Player,
-    GOT_Enemy,
     GOT_LaserEmitter,
     GOT_LaserCollector,
     GOT_Mirror,
@@ -40,6 +40,13 @@ struct Transform {
     {
         b2Transform transform = b2Body_GetTransform(body);
         return vec2(transform.q.c, transform.q.s);
+    }
+
+    b2ShapeId get_shape() const
+    {
+        b2ShapeId shape = b2_nullShapeId;
+        b2Body_GetShapes(body, &shape, 1);
+        return shape;
     }
 
     void set_velocity(vec2 vel)
@@ -111,6 +118,11 @@ struct Mirror {
 	Mirror(Transform transform) : transform(transform) {}
 };
 
+struct Ball {
+    Transform transform;
+};
+
+// static world geometry
 struct Wall {
     b2BodyId body;
     AABB bounding_box;
@@ -123,17 +135,15 @@ struct Wall {
 static const vec2 playerScale = vec2(50, 50);
 
 struct Player {
+#if PHYSICS_DEBUG
+    b2ContactData contacts[8];
+    int contact_count;
+#endif
+
     float speed;
     Transform transform;
 
     Player() {}
-};
-
-struct Enemy {
-    Transform transform;
-    b2BodyId body;
-
-    Enemy(Transform tr, b2BodyId body) : transform(tr), body(body) {}
 };
 
 struct GameObject {
@@ -141,8 +151,8 @@ struct GameObject {
 
     union {
         Player player;
-        Enemy enemy;
         Wall wall;
+        Ball ball;
         LaserEmitter emitter;
         LaserCollector collector;
         Mirror mirror;
@@ -154,17 +164,14 @@ struct GameObject {
 
     GameObject()
     {}
-    GameObject(Wall& wall)
+    GameObject(Wall wall)
         : type(GOT_Wall), wall(wall)
     {}
-    GameObject(Wall&& wall)
-        : type(GOT_Wall), wall(wall)
+    GameObject(Ball ball)
+        : type(GOT_Ball), ball(ball)
     {}
     GameObject(Player& player)
         : type(GOT_Player), player(player)
-    {}
-    GameObject(Enemy& enemy)
-        : type(GOT_Enemy), enemy(enemy)
     {}
 };
 
@@ -178,6 +185,7 @@ struct SpatialGridCell {
     int overflow_cell;
 };
 
+// @todo are we going to need this? If not just remove
 struct SpatialGrid {
     SpatialGridCell* cells;
     int dimension_x;
@@ -279,7 +287,7 @@ struct GameState {
     void frame_update(double elapsed_time, double delta_time, const Input& input);
     void fixed_update(u32 tick, double timeStep, const Input& input);
 
-    ObjectId add_object(GameObject& obj)
+    ObjectId add_object(const GameObject& obj)
     {
         int object_index = game_objects.add(obj);
         return ObjectId(object_index);
@@ -289,7 +297,12 @@ struct GameState {
     {
         game_objects.remove(object);
     }
+
+    void add_wall(vec2 position, vec2 scale);
 };
+
+// laser update
+void calculate_light();
 
 b2BodyId make_body_box(b2WorldId worldId, vec2 position, vec2 scale, b2BodyType body_type);
 b2BodyId make_body_circle(b2WorldId worldId, vec2 position, float radius, b2BodyType body_type);

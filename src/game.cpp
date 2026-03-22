@@ -1,5 +1,7 @@
 #include "game.h"
 
+#include "draw.h"  // debug visualization
+
 vec2 get_input_direction(const Input& input);
 
 bool GameState::initialize()
@@ -16,16 +18,17 @@ bool GameState::initialize()
     player.transform.body = make_body_circle(worldId, playerPosition, 10.0, b2_kinematicBody);
     GameObject player_object = GameObject(player);
 
-    vec2 wallPosition = vec2(100, 100);
-    vec2 wallScale = vec2(100, 100);
-    AABB wallBB;
-    wallBB.min = wallPosition;
-    wallBB.max = wallPosition + wallScale;
-    b2BodyId wall_body = make_body_box(worldId, vec2( wallPosition ), wallScale, b2_staticBody);
-    GameObject wall = GameObject(Wall(wall_body, wallBB));
-
-    add_object(wall);
     add_object(player_object);
+
+    add_wall(vec2(100, 100), vec2(100, 100));
+    add_wall(vec2(400, 400), vec2(400, 100));
+
+    Ball ball;
+    ball.transform.body = make_body_circle(worldId, vec2(400, 100), 30.0, b2_dynamicBody);
+    add_object(GameObject(ball));
+    Ball ball2;
+    ball.transform.body = make_body_circle(worldId, vec2(500, 100), 20.0, b2_dynamicBody);
+    add_object(GameObject(ball));
 
     return true;
 }
@@ -57,7 +60,6 @@ void GameState::frame_update(double elapsed_time, double delta_time, const Input
             case GOT_Player: {
                 break;
             }
-            case GOT_Enemy: { break; }
             case GOT_LaserEmitter: { break; }
             case GOT_LaserCollector: { break; }
             case GOT_Mirror: { break; }
@@ -73,8 +75,6 @@ void GameState::frame_update(double elapsed_time, double delta_time, const Input
 
 void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
 {
-    b2World_Step(worldId, timeStep, 4);
-
     for (auto& object : game_objects)
     {
         switch (object.type)
@@ -82,15 +82,19 @@ void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
             case GOT_Wall: { break; }
             case GOT_Player: {
                 Player& player = object.player;
+                vec2 position = player.transform.get_position();
                 vec2 velocity = player.speed * get_input_direction(input);
                 player.transform.set_velocity(velocity);
+
 #if PHYSICS_DEBUG
+                player.contact_count = b2Body_GetContactData(player.transform.body, player.contacts, 8);
                 target_move_pos = player.transform.get_position() + velocity;
 #endif
                 break;
             }
-            case GOT_Enemy: { break; }
-            case GOT_LaserEmitter: { break; }
+            case GOT_LaserEmitter: {
+                break;
+            }
             case GOT_LaserCollector: { break; }
             case GOT_Mirror: { break; }
             case GOT_LaserReflector: { break; }
@@ -100,11 +104,30 @@ void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
             case GOT_EnergySource: { break; }
         }
     }
+
+    b2World_Step(worldId, timeStep, 4);
+
+    // laser update
+    calculate_light();
 }
 
 void GameState::cleanup()
 {
     b2DestroyWorld(worldId);
+}
+
+void calculate_light()
+{
+    // @todo
+}
+
+void GameState::add_wall(vec2 position, vec2 scale)
+{
+    AABB wallBB;
+    wallBB.min = position - scale / 2;
+    wallBB.max = position + scale / 2;
+    b2BodyId wall_body = make_body_box(worldId, position, scale, b2_staticBody);
+    add_object(GameObject(Wall(wall_body, wallBB)));
 }
 
 vec2 get_input_direction(const Input& input)
@@ -146,6 +169,7 @@ b2BodyId make_body_box(b2WorldId worldId, vec2 position, vec2 scale, b2BodyType 
 {
     b2BodyDef bodyDef = b2DefaultBodyDef();
     bodyDef.type = body_type;
+    bodyDef.position = b2Vec2{position.x - scale.x / 2, position.y + scale.y / 2};
     b2BodyId body = b2CreateBody(worldId, &bodyDef);
     b2Polygon polygon = b2MakeBox(scale.x, scale.y);
     b2ShapeDef shapeDef = b2DefaultShapeDef();
