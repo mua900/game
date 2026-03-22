@@ -1,6 +1,6 @@
 #include "game.h"
 
-#include "draw.h"  // debug visualization
+float playerCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context );
 
 vec2 get_input_direction(const Input& input);
 
@@ -16,6 +16,7 @@ bool GameState::initialize()
     Player player;
     player.speed = 100;
     player.transform.body = make_body_circle(worldId, playerPosition, 10.0, b2_kinematicBody);
+    player.draw.color = ColorF(0.6, 0.7, 0.6, 1.0);
     GameObject player_object = GameObject(player);
 
     add_object(player_object);
@@ -86,9 +87,15 @@ void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
                 vec2 velocity = player.speed * get_input_direction(input);
                 player.transform.set_velocity(velocity);
 
+                b2QueryFilter filter = b2DefaultQueryFilter();
+                b2Vec2 pos = {position.x, position.y};
+                b2Vec2 vel = { velocity.x, velocity.y };
+                b2TreeStats stats = b2World_CastRay(worldId, pos, vel, filter,
+                									playerCastResult, &player );
+
+
 #if PHYSICS_DEBUG
                 player.contact_count = b2Body_GetContactData(player.transform.body, player.contacts, 8);
-                target_move_pos = player.transform.get_position() + velocity;
 #endif
                 break;
             }
@@ -242,4 +249,19 @@ AABB scale_bounding_box(AABB original, vec2 scale)
 int spatial_hash(vec2 pos)
 {
     return int(floor(pos.x) * 962623) ^ int(floor(pos.y) * 1193771);
+}
+
+float playerCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context )
+{
+    Player* player = (Player*) context;
+    b2ShapeType shapeType = b2Shape_GetType(shapeId);
+    const char* shapeNames[] = {
+        "circle",
+        "capsule",
+        "segment",
+        "polygon",
+        "chainSegment",
+    };
+    printf("Shape type: %s\n", shapeNames[(int)shapeType]);
+    return -1;
 }

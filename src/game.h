@@ -8,7 +8,7 @@
 
 #include "box2d/box2d.h"
 
-#define PHYSICS_DEBUG 0
+#define PHYSICS_DEBUG 1
 
 enum GameObjectType {
     GOT_Wall,
@@ -25,6 +25,12 @@ enum GameObjectType {
 };
 
 using ObjectId = u32;
+
+struct DrawData {
+    ColorF color;
+
+    DrawData(ColorF color) : color(color) {}
+};
 
 struct Transform {
     b2BodyId body;
@@ -52,6 +58,11 @@ struct Transform {
     void set_velocity(vec2 vel)
     {
         b2Body_SetLinearVelocity(body, b2Vec2 { vel.x, vel.y });
+    }
+
+    vec2 get_velocity() const {
+        b2Vec2 vel = b2Body_GetLinearVelocity(body);
+        return vec2(vel.x, vel.y);
     }
 };
 
@@ -142,8 +153,9 @@ struct Player {
 
     float speed;
     Transform transform;
+    DrawData draw;
 
-    Player() {}
+    Player() : draw(ColorF(0,0,0,1)) {}
 };
 
 struct GameObject {
@@ -276,10 +288,6 @@ struct GameState {
     SpatialGrid grid = {};
 
     b2WorldId worldId = {};
-
-#if PHYSICS_DEBUG
-    vec2 target_move_pos = {};
-#endif
 
     bool initialize();
     void cleanup();

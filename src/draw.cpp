@@ -2,13 +2,6 @@
 
 void draw_game(RenderContext context, const GameState& state)
 {
-#if PHYSICS_DEBUG
-    float w = 50;
-    float h = 50;
-    Rectangle area = { state.target_move_pos.x, state.target_move_pos.y, w, h };
-    render_rectangle(context, area, Color(0xFF, 0, 0, 0xFF));
-#endif
-
     for (const auto object : state.game_objects)
     {
         switch (object.type)
@@ -20,20 +13,13 @@ void draw_game(RenderContext context, const GameState& state)
                 float height = wall.bounding_box.max.y - wall.bounding_box.min.y;
                 Rectangle box = Rectangle(wall.bounding_box.min.x + width / 2, wall.bounding_box.min.y + height / 2, width, height);
                 render_rectangle(context, box, Color(0x55, 0x88, 0x55, 0xff));
-#if PHYSICS_DEBUG
-                b2Transform transform;
-                transform.p = { box.x, box.y };
-                transform.q = { 1, 0 };
-                b2Vec2 vertices[4];
-                context.phys_draw.DrawSolidPolygonFcn(transform, vertices, 4, 10, b2_colorAqua, nullptr);
-#endif
                 break;
             }
             case GOT_Player:
             {
                 const Player& player = object.player;
                 vec2 position = player.transform.get_position();
-                draw_circle(context.renderer, position, 20.0, ColorF(0.7, 0.6, 0.7, 1.0));
+                draw_circle(context.renderer, position, 20.0, player.draw.color);
 #if PHYSICS_DEBUG
                 for (int i = 0; i < player.contact_count; i++)
                 {
@@ -41,6 +27,9 @@ void draw_game(RenderContext context, const GameState& state)
                     draw_arrow(context.renderer, position, position + normal * 20.0, 20.0, ColorF(1.0, 0, 0, 1.0));
 
                 }
+
+                vec2 velocity = player.transform.get_velocity();
+                draw_arrow(context.renderer, position, position + velocity, 20, ColorF(0.4, 0.5, 0.7, 1.0));
 #endif
                 break;
             }

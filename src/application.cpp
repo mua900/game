@@ -48,14 +48,6 @@ bool Application::initialize()
         m_render = { vec2(render_size_x, render_size_y), renderer };
     }
 
-#if PHYSICS_DEBUG
-    phys_debug_draw = b2DefaultDebugDraw();
-    phys_debug_draw.context = m_render.renderer;  // SDL_Renderer *
-    phys_debug_draw.DrawSolidPolygonFcn = draw_solid_polygon_b2;
-    phys_debug_draw.DrawCircleFcn = draw_circle_b2;
-    m_render.phys_draw = phys_debug_draw;
-#endif
-
     {
         if (!TTF_Init())
         {
