@@ -9,13 +9,14 @@ bool GameState::initialize()
     grid.initialize(100, 100);
 
     b2WorldDef worldDef = b2DefaultWorldDef();
-    worldDef.gravity = { 0.0f, 10.0f };
+    worldDef.gravity = { 0.0f, 0.0f };
     worldId = b2CreateWorld(&worldDef);
 
     const vec2 playerPosition = vec2(500, 500);
     Player player;
     player.speed = 100;
-    player.transform.body = make_body_circle(worldId, playerPosition, 10.0, b2_kinematicBody);
+    b2Filter playerFilter = make_filter(CategoryPlayer, CategoryStatic | CategoryDynamic, 0);
+    player.transform.body = make_body_circle(worldId, playerPosition, 10.0, b2_kinematicBody, playerFilter);
     player.draw.color = ColorF(0.6, 0.7, 0.6, 1.0);
     GameObject player_object = GameObject(player);
 
@@ -24,11 +25,13 @@ bool GameState::initialize()
     add_wall(vec2(100, 100), vec2(100, 100));
     add_wall(vec2(400, 400), vec2(400, 100));
 
+    b2Filter dynamicFilter = make_filter(CategoryDynamic, CategoryPlayer | CategoryStatic, 0);
+
     Ball ball;
-    ball.transform.body = make_body_circle(worldId, vec2(400, 100), 30.0, b2_dynamicBody);
+    ball.transform.body = make_body_circle(worldId, vec2(400, 100), 30.0, b2_dynamicBody, dynamicFilter);
     add_object(GameObject(ball));
     Ball ball2;
-    ball.transform.body = make_body_circle(worldId, vec2(500, 100), 20.0, b2_dynamicBody);
+    ball.transform.body = make_body_circle(worldId, vec2(500, 100), 20.0, b2_dynamicBody, dynamicFilter);
     add_object(GameObject(ball));
 
     return true;
@@ -88,6 +91,8 @@ void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
                 player.transform.set_velocity(velocity);
 
                 b2QueryFilter filter = b2DefaultQueryFilter();
+                filter.categoryBits = CategoryPlayer;
+                filter.maskBits = CategoryStatic | CategoryDynamic;
                 b2Vec2 pos = {position.x, position.y};
                 b2Vec2 vel = { velocity.x, velocity.y };
                 b2TreeStats stats = b2World_CastRay(worldId, pos, vel, filter,
@@ -130,10 +135,12 @@ void calculate_light()
 
 void GameState::add_wall(vec2 position, vec2 scale)
 {
+    b2Filter staticFilter = make_filter(CategoryStatic, CategoryDynamic | CategoryPlayer, 0);
+
     AABB wallBB;
     wallBB.min = position - scale / 2;
     wallBB.max = position + scale / 2;
-    b2BodyId wall_body = make_body_box(worldId, position, scale, b2_staticBody);
+    b2BodyId wall_body = make_body_box(worldId, position, scale, b2_staticBody, staticFilter);
     add_object(GameObject(Wall(wall_body, wallBB)));
 }
 
@@ -172,7 +179,7 @@ vec2 get_input_direction(const Input& input)
     return dir;
 }
 
-b2BodyId make_body_box(b2WorldId worldId, vec2 position, vec2 scale, b2BodyType body_type)
+b2BodyId make_body_box(b2WorldId worldId, vec2 position, vec2 scale, b2BodyType body_type, b2Filter filter)
 {
     b2BodyDef bodyDef = b2DefaultBodyDef();
     bodyDef.type = body_type;
@@ -180,12 +187,22 @@ b2BodyId make_body_box(b2WorldId worldId, vec2 position, vec2 scale, b2BodyType 
     b2BodyId body = b2CreateBody(worldId, &bodyDef);
     b2Polygon polygon = b2MakeBox(scale.x, scale.y);
     b2ShapeDef shapeDef = b2DefaultShapeDef();
+    shapeDef.filter = filter;
     b2CreatePolygonShape(body, &shapeDef, &polygon);
 
     return body;
 }
 
-b2BodyId make_body_circle(b2WorldId worldId, vec2 position, float radius, b2BodyType body_type)
+b2Filter make_filter(u64 categoryBits, u64 maskBits, int groupIndex)
+{
+    b2Filter filter = b2DefaultFilter();
+    filter.categoryBits = categoryBits;
+    filter.maskBits = maskBits;
+    filter.groupIndex = groupIndex;
+    return filter;
+}
+
+b2BodyId make_body_circle(b2WorldId worldId, vec2 position, float radius, b2BodyType body_type, b2Filter filter)
 {
     b2BodyDef bodyDef = b2DefaultBodyDef();
     bodyDef.type = body_type;
@@ -195,6 +212,7 @@ b2BodyId make_body_circle(b2WorldId worldId, vec2 position, float radius, b2Body
     b2Circle circle = {};
     circle.radius = radius;
     b2ShapeDef shapeDef = b2DefaultShapeDef();
+    shapeDef.filter = filter;
     b2CreateCircleShape(body, &shapeDef, &circle);
 
     return body;
@@ -254,6 +272,7 @@ int spatial_hash(vec2 pos)
 float playerCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context )
 {
     Player* player = (Player*) context;
+    b2BodyId body = b2Shape_GetBody(shapeId);
     b2ShapeType shapeType = b2Shape_GetType(shapeId);
     const char* shapeNames[] = {
         "circle",
@@ -263,5 +282,5 @@ float playerCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fr
         "chainSegment",
     };
     printf("Shape type: %s\n", shapeNames[(int)shapeType]);
-    return -1;
+    return 0;
 }

@@ -346,7 +346,11 @@ struct Color {
 };
 
 struct ColorF {
-    float r, g, b, a;
+    float r;
+    float g;
+    float b;
+    float a;
+    ColorF() {}
     ColorF(float r, float g, float b, float a) : r(r), g(g), b(b), a(a) {}
     ColorF(const Color& color);
 };

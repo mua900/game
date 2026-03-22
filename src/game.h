@@ -24,11 +24,19 @@ enum GameObjectType {
     GOT_EnergySource,
 };
 
+// physics collision categories
+enum GameCollisionCategories {
+    CategoryPlayer   = 0x01,
+    CategoryStatic   = 0x02,
+    CategoryDynamic  = 0x04,
+};
+
 using ObjectId = u32;
 
 struct DrawData {
     ColorF color;
 
+    DrawData() {}
     DrawData(ColorF color) : color(color) {}
 };
 
@@ -155,7 +163,7 @@ struct Player {
     Transform transform;
     DrawData draw;
 
-    Player() : draw(ColorF(0,0,0,1)) {}
+    Player() {}
 };
 
 struct GameObject {
@@ -312,8 +320,10 @@ struct GameState {
 // laser update
 void calculate_light();
 
-b2BodyId make_body_box(b2WorldId worldId, vec2 position, vec2 scale, b2BodyType body_type);
-b2BodyId make_body_circle(b2WorldId worldId, vec2 position, float radius, b2BodyType body_type);
+b2Filter make_filter(u64 categoryBits, u64 maskBits, int groupIndex);
+
+b2BodyId make_body_box(b2WorldId worldId, vec2 position, vec2 scale, b2BodyType body_type, b2Filter filter);
+b2BodyId make_body_circle(b2WorldId worldId, vec2 position, float radius, b2BodyType body_type, b2Filter filter);
 
 void translate(vec2& pos, vec2 translate, b2BodyId body = b2_nullBodyId);
 void rotate(vec2& direction, float amount, b2BodyId body = b2_nullBodyId);
