@@ -1,5 +1,7 @@
 #pragma once
 
+#include "math_util.h"
+
 #include <SDL3/SDL.h>
 
 #define KEY_SPACE SDL_SCANCODE_SPACE

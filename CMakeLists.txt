@@ -21,6 +21,8 @@ add_executable(game
     src/asset.cpp
     src/log.h
     src/log.cpp
+    src/math_util.h
+    src/math_util.cpp
 
     src/common.h
     src/common.cpp

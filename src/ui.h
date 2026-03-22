@@ -4,6 +4,7 @@
 #include <SDL3_ttf/SDL_ttf.h>
 
 #include "common.h"
+#include "math_util.h"
 #include "template.h"
 
 #define INIT_WINDOW_WIDTH  1440.0f

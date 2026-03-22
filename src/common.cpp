@@ -22,38 +22,6 @@ void panic(char const* const msg)
     exit(1);
 }
 
-float snap_value(float val, float bound1, float bound2, float threshold)
-{
-  if (fabsf(val - bound1) <= threshold) {
-    val = bound1;
-  }
-  else if (fabsf(val - bound2) <= threshold) {
-    val = bound2;
-  }
-  else if (fabsf(val - (bound1 + bound2) / 2) <= threshold) {
-    val = (bound1 + bound2) / 2;
-  }
-
-  return val;
-}
-
-Color::Color(const ColorF& color) {
-    float coef = 255.0;
-    r = int(color.r * coef);
-    g = int(color.g * coef);
-    b = int(color.b * coef);
-    a = int(color.a * coef);
-}
-
-ColorF::ColorF(const Color& color) {
-    float coef = 1.0 / 255.0;
-    r = (float)color.r * coef;
-    g = (float)color.g * coef;
-    b = (float)color.b * coef;
-    a = (float)color.a * coef;
-}
-
-
 int pop_lsb(u64* x) {
     int index = TRAILING_ZEROS(*x);
     *x &= *x - 1;
@@ -459,18 +427,6 @@ String String_Builder::slice(int start, int end)
     return String(buffer + start, end - start);
 }
 
-vec2 get_direction_vector(float angle)
-{
-    float c = cosf(angle);
-    float s = sinf(angle);
-    return vec2(c, s);
-}
-
-bool Rectangle::contains(vec2 p) const
-{
-    return p.x >= x && p.y >= y && p.x <= x + w && p.y <= y + h;
-}
-
 void String::trim() {
 	while (size > 0 && is_space(data[size-1])) {
 		size--;
@@ -514,15 +470,4 @@ void String::print(bool newline) const
 bool String::operator==(const String& other) const
 {
     return string_compare(*this, other);
-}
-
-
-float Complex::magnitude() const
-{
-    return sqrtf(real*real+imaginary*imaginary);
-}
-
-float Complex::winding() const
-{
-	return atan2f(imaginary, real);
 }

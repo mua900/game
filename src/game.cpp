@@ -95,9 +95,7 @@ void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
                 filter.maskBits = CategoryStatic | CategoryDynamic;
                 b2Vec2 pos = {position.x, position.y};
                 b2Vec2 vel = { velocity.x, velocity.y };
-                b2TreeStats stats = b2World_CastRay(worldId, pos, vel, filter,
-                									playerCastResult, &player );
-
+                b2TreeStats stats = b2World_CastRay( worldId, pos, vel, filter, playerCastResult, &player );
 
 #if PHYSICS_DEBUG
                 player.contact_count = b2Body_GetContactData(player.transform.body, player.contacts, 8);
@@ -131,17 +129,6 @@ void GameState::cleanup()
 void calculate_light()
 {
     // @todo
-}
-
-void GameState::add_wall(vec2 position, vec2 scale)
-{
-    b2Filter staticFilter = make_filter(CategoryStatic, CategoryDynamic | CategoryPlayer, 0);
-
-    AABB wallBB;
-    wallBB.min = position - scale / 2;
-    wallBB.max = position + scale / 2;
-    b2BodyId wall_body = make_body_box(worldId, position, scale, b2_staticBody, staticFilter);
-    add_object(GameObject(Wall(wall_body, wallBB)));
 }
 
 vec2 get_input_direction(const Input& input)
@@ -179,13 +166,24 @@ vec2 get_input_direction(const Input& input)
     return dir;
 }
 
+void GameState::add_wall(vec2 position, vec2 scale)
+{
+    b2Filter staticFilter = make_filter(CategoryStatic, CategoryDynamic | CategoryPlayer, 0);
+
+    AABB wallBB;
+    wallBB.min = position - scale / 2;
+    wallBB.max = position + scale / 2;
+    b2BodyId wall_body = make_body_box(this->worldId, position, scale, b2_staticBody, staticFilter);
+    this->add_object(GameObject(Wall(wall_body, wallBB)));
+}
+
 b2BodyId make_body_box(b2WorldId worldId, vec2 position, vec2 scale, b2BodyType body_type, b2Filter filter)
 {
     b2BodyDef bodyDef = b2DefaultBodyDef();
     bodyDef.type = body_type;
-    bodyDef.position = b2Vec2{position.x - scale.x / 2, position.y + scale.y / 2};
+    bodyDef.position = b2Vec2{position.x, position.y};
     b2BodyId body = b2CreateBody(worldId, &bodyDef);
-    b2Polygon polygon = b2MakeBox(scale.x, scale.y);
+    b2Polygon polygon = b2MakeBox(scale.x / 2, scale.y / 2);
     b2ShapeDef shapeDef = b2DefaultShapeDef();
     shapeDef.filter = filter;
     b2CreatePolygonShape(body, &shapeDef, &polygon);
@@ -272,15 +270,30 @@ int spatial_hash(vec2 pos)
 float playerCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context )
 {
     Player* player = (Player*) context;
-    b2BodyId body = b2Shape_GetBody(shapeId);
-    b2ShapeType shapeType = b2Shape_GetType(shapeId);
-    const char* shapeNames[] = {
-        "circle",
-        "capsule",
-        "segment",
-        "polygon",
-        "chainSegment",
-    };
-    printf("Shape type: %s\n", shapeNames[(int)shapeType]);
+
+    vec2 position = player->transform.get_position();
+    vec2 normal_vector = vec2(normal.x, normal.y);
+    vec2 point_vector = vec2(point.x, point.y);
+    vec2 velocity = player->transform.get_velocity();
+    float velocity_scale = velocity.magnitude();
+
+    if (velocity_scale < 1e-6)
+    {
+        return 0;
+    }
+
+    float distance = (point_vector - position).magnitude();
+    // vec2 along_vector = velocity - normal_vector * dot2(normal_vector, velocity);
+    vec2 reflect = reflect2(velocity, normal_vector).normalized();
+
+    float remaining_distance = velocity_scale - distance;
+    if (remaining_distance < 0)
+    {
+        return 0;
+    }
+
+    velocity += reflect * remaining_distance;
+    player->transform.set_velocity(velocity);
+
     return 0;
 }
