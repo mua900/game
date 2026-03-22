@@ -38,6 +38,12 @@ struct vec2 {
         y -= other.y;
     }
 
+    void operator/=(float s)
+    {
+        x /= s;
+        y /= s;
+    }
+
     void operator*=(float s)
     {
         x *= s;

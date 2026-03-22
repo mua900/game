@@ -13,7 +13,6 @@ bool Application::initialize()
         return false;
     }
 
-
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         SDL_Log("Failed to init SDL: %s\n", SDL_GetError());
         return false;

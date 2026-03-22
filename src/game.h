@@ -151,7 +151,7 @@ struct Wall {
     {}
 };
 
-static const vec2 playerScale = vec2(50, 50);
+static const float playerRadius = 10;
 
 struct Player {
 #if PHYSICS_DEBUG

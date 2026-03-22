@@ -4,6 +4,14 @@ float playerCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fr
 
 vec2 get_input_direction(const Input& input);
 
+struct PlayerCastContext {
+    Player* player;
+    double timeStep;
+};
+
+// @note beware that the fixed update loop is most likely isn't going to run in the first iteration of the application loop
+// so nothing should be first initialized in fixed update
+
 bool GameState::initialize()
 {
     grid.initialize(100, 100);
@@ -16,8 +24,14 @@ bool GameState::initialize()
     Player player;
     player.speed = 100;
     b2Filter playerFilter = make_filter(CategoryPlayer, CategoryStatic | CategoryDynamic, 0);
-    player.transform.body = make_body_circle(worldId, playerPosition, 10.0, b2_kinematicBody, playerFilter);
+    player.transform.body = make_body_circle(worldId, playerPosition, playerRadius, b2_kinematicBody, playerFilter);
     player.draw.color = ColorF(0.6, 0.7, 0.6, 1.0);
+
+#if PHYSICS_DEBUG
+    for (int i = 0; i < 8; i++)
+        player.contacts[i] = {};
+    player.contact_count = {};
+#endif
     GameObject player_object = GameObject(player);
 
     add_object(player_object);
@@ -90,12 +104,22 @@ void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
                 vec2 velocity = player.speed * get_input_direction(input);
                 player.transform.set_velocity(velocity);
 
+                float velocity_magnitude = velocity.magnitude();
+                if (velocity_magnitude < 1e-6)
+                {
+                    break;
+                }
+
+                vec2 velocity_normal = velocity / velocity_magnitude;
                 b2QueryFilter filter = b2DefaultQueryFilter();
                 filter.categoryBits = CategoryPlayer;
                 filter.maskBits = CategoryStatic | CategoryDynamic;
-                b2Vec2 pos = {position.x, position.y};
+                vec2 cast_start = position;// + velocity_normal * playerRadius;
+                b2Vec2 pos = { cast_start.x, cast_start.y };
                 b2Vec2 vel = { velocity.x, velocity.y };
-                b2TreeStats stats = b2World_CastRay( worldId, pos, vel, filter, playerCastResult, &player );
+
+                PlayerCastContext context = { &player, timeStep };
+                b2World_CastRay( worldId, pos, vel, filter, playerCastResult, &context );
 
 #if PHYSICS_DEBUG
                 player.contact_count = b2Body_GetContactData(player.transform.body, player.contacts, 8);
@@ -269,30 +293,33 @@ int spatial_hash(vec2 pos)
 
 float playerCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context )
 {
-    Player* player = (Player*) context;
+    PlayerCastContext* castContext = (PlayerCastContext*) context;
+    Player* player = castContext->player;
 
     vec2 position = player->transform.get_position();
     vec2 normal_vector = vec2(normal.x, normal.y);
     vec2 point_vector = vec2(point.x, point.y);
-    vec2 velocity = player->transform.get_velocity();
-    float velocity_scale = velocity.magnitude();
+    vec2 velocity = player->transform.get_velocity() * castContext->timeStep;
+    float speed = velocity.magnitude();
 
-    if (velocity_scale < 1e-6)
+    if (speed < 1e-6)
     {
         return 0;
     }
+
+    const float skin_width = 0.05;
 
     float distance = (point_vector - position).magnitude();
-    // vec2 along_vector = velocity - normal_vector * dot2(normal_vector, velocity);
-    vec2 reflect = reflect2(velocity, normal_vector).normalized();
+    float remaining = speed - distance;
 
-    float remaining_distance = velocity_scale - distance;
-    if (remaining_distance < 0)
+    if (remaining < 0)
     {
         return 0;
     }
 
-    velocity += reflect * remaining_distance;
+    vec2 reflect = reflect2(velocity, normal_vector).normalized();
+
+    velocity += reflect;
     player->transform.set_velocity(velocity);
 
     return 0;
