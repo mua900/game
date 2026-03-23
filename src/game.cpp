@@ -39,7 +39,7 @@ bool GameState::initialize()
     add_wall(vec2(100, 100), vec2(100, 100));
     add_wall(vec2(400, 400), vec2(400, 100));
 
-    b2Filter dynamicFilter = make_filter(CategoryDynamic, CategoryPlayer | CategoryStatic, 0);
+    b2Filter dynamicFilter = make_filter(CategoryDynamic, CategoryPlayer | CategoryStatic, 1);
 
     Ball ball;
     ball.transform.body = make_body_circle(worldId, vec2(400, 100), 30.0, b2_dynamicBody, dynamicFilter);
@@ -127,6 +127,8 @@ void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
                 break;
             }
             case GOT_LaserEmitter: {
+
+
                 break;
             }
             case GOT_LaserCollector: { break; }
@@ -198,7 +200,7 @@ void GameState::add_wall(vec2 position, vec2 scale)
     wallBB.min = position - scale / 2;
     wallBB.max = position + scale / 2;
     b2BodyId wall_body = make_body_box(this->worldId, position, scale, b2_staticBody, staticFilter);
-    this->add_object(GameObject(Wall(wall_body, wallBB)));
+    this->add_object(GameObject(Wall(Transform(wall_body), wallBB)));
 }
 
 b2BodyId make_body_box(b2WorldId worldId, vec2 position, vec2 scale, b2BodyType body_type, b2Filter filter)

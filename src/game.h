@@ -29,6 +29,7 @@ enum GameCollisionCategories {
     CategoryPlayer   = 0x01,
     CategoryStatic   = 0x02,
     CategoryDynamic  = 0x04,
+    CategoryLaser    = 0x08,
 };
 
 using ObjectId = u32;
@@ -42,7 +43,9 @@ struct DrawData {
 
 struct Transform {
     b2BodyId body;
-    vec2 velocity;
+
+    Transform() {}
+    Transform(b2BodyId body) : body(body) {}
 
     vec2 get_position() const
     {
@@ -80,55 +83,51 @@ struct AABB {
 };
 
 struct LaserCollector {
-    vec2 position;
-	vec2 direction;
+    Transform transform;
 
-	LaserCollector(vec2 pos, vec2 dir) : position(pos), direction(dir) {}
+	LaserCollector(Transform transform) : transform(transform) {}
 };
 
 struct LaserEmitter {
-    vec2 position;
-	vec2 direction;
+    Transform transform;
 
-	LaserEmitter(vec2 pos, vec2 dir) : position(pos), direction(dir) {}
+	LaserEmitter(Transform transform) : transform(transform) {}
 };
 
 struct LaserReflector {
-    vec2 position;
+    Transform transform;
 	LaserEmitter* source = nullptr;
 	LaserCollector* target = nullptr;
 
-	LaserReflector(vec2 pos, LaserEmitter* src, LaserCollector* dst) : position(pos), source(src), target(dst) {}
+	LaserReflector(Transform transform, LaserEmitter* src, LaserCollector* dst) : transform(transform), source(src), target(dst) {}
 };
 
 struct WavelengthShifter {
-    vec2 position;
+    Transform transform;
 	float shift;
 
-	WavelengthShifter(vec2 pos, float shift) : position(pos), shift(shift) {}
+	WavelengthShifter(Transform transform, float shift) : transform(transform), shift(shift) {}
 };
 
 struct LaserSplitter {
-    vec2 position;
+    Transform transform;
 	float scatter;
 	int nbeams;
 
-	LaserSplitter(vec2 pos, float scat, int beam_count) : position(pos), scatter(scat), nbeams(beam_count) {}
+	LaserSplitter(Transform transform, float scat, int beam_count) : transform(transform), scatter(scat), nbeams(beam_count) {}
 };
 
 struct EnergySource {
-    vec2 position;
+    Transform transform;
 
-	EnergySource(vec2 position) : position(position) {}
+	EnergySource(Transform transform) : transform(transform) {}
 };
 
 struct EnergyGate {
-    vec2 position;
-	vec2 scale;
-    b2BodyId body;
+    Transform transform;
 	EnergySource* source = nullptr;
 
-	EnergyGate(vec2 pos, vec2 scale, b2BodyId body) : position(pos), scale(scale), body(body) {}
+	EnergyGate(Transform transform) : transform(transform) {}
 };
 
 struct Mirror {
@@ -143,11 +142,11 @@ struct Ball {
 
 // static world geometry
 struct Wall {
-    b2BodyId body;
+    Transform transform;
     AABB bounding_box;
 
-    Wall(b2BodyId body_id, AABB bb)
-        : body(body_id), bounding_box(bb)
+    Wall(Transform tr, AABB bb)
+        : transform(tr), bounding_box(bb)
     {}
 };
 
