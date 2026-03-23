@@ -1,5 +1,6 @@
 #include "game.h"
 
+float lightCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context );
 float playerCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context );
 
 vec2 get_input_direction(const Input& input);
@@ -7,6 +8,11 @@ vec2 get_input_direction(const Input& input);
 struct PlayerCastContext {
     Player* player;
     double timeStep;
+};
+
+struct LightCastContext {
+
+    int hit_count = 0;
 };
 
 // @note beware that the fixed update loop is most likely isn't going to run in the first iteration of the application loop
@@ -47,6 +53,11 @@ bool GameState::initialize()
     Ball ball2;
     ball.transform.body = make_body_circle(worldId, vec2(500, 100), 20.0, b2_dynamicBody, dynamicFilter);
     add_object(GameObject(ball));
+
+    b2Filter emitter_filter = make_filter(CategoryDynamic, CategoryStatic | CategoryDynamic | CategoryLight, 1);
+    Transform emitter_transform = Transform(make_body_circle(worldId, vec2(600, 600), 10, b2_dynamicBody, emitter_filter));
+    LaserEmitter emitter(emitter_transform);
+    add_object(GameObject(emitter));
 
     return true;
 }
@@ -144,7 +155,7 @@ void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
     b2World_Step(worldId, timeStep, 4);
 
     // laser update
-    calculate_light();
+    calculate_light(*this);
 }
 
 void GameState::cleanup()
@@ -152,9 +163,29 @@ void GameState::cleanup()
     b2DestroyWorld(worldId);
 }
 
-void calculate_light()
+void calculate_light(GameState& state)
 {
-    // @todo
+    for (auto& object : state.game_objects)
+    {
+        if (object.type == GOT_LaserEmitter)
+        {
+            LaserEmitter& emitter = object.emitter;
+            calculate_light_beam(state.worldId, emitter.transform.get_position(), 50);
+        }
+    }
+}
+
+int calculate_light_beam(b2WorldId worldId, vec2 start, float range)
+{
+    b2QueryFilter filter = b2DefaultQueryFilter();
+    filter.categoryBits = CategoryLight;
+    filter.maskBits = CategoryStatic | CategoryDynamic | CategoryPlayer; // ~CategoryLight;
+    b2Vec2 pos = {  start.x, start.y };
+    b2Vec2 end = { start.x + cosf(range), start.y + sinf(range) };
+
+    LightCastContext context = {  };
+    b2World_CastRay( worldId, pos, end, filter, lightCastResult, &context );
+    return context.hit_count;
 }
 
 vec2 get_input_direction(const Input& input)
@@ -291,6 +322,11 @@ AABB scale_bounding_box(AABB original, vec2 scale)
 int spatial_hash(vec2 pos)
 {
     return int(floor(pos.x) * 962623) ^ int(floor(pos.y) * 1193771);
+}
+
+float lightCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context )
+{
+    return fraction;
 }
 
 float playerCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context )

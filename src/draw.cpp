@@ -42,6 +42,13 @@ void draw_game(RenderContext context, const GameState& state)
                 draw_circle(context.renderer, position, circle.radius, ColorF(0.5, 0.5, 0.5, 1.0));
                 break;
             }
+            case GOT_LaserEmitter:
+            {
+                const LaserEmitter& emitter = object.emitter;
+                vec2 pos = emitter.transform.get_position();
+                draw_circle(context.renderer, pos, 10, ColorF(0.9, 0.4, 0.3, 1.0));
+                break;
+            }
         }
     }
 }

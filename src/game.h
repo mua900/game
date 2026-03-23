@@ -29,7 +29,7 @@ enum GameCollisionCategories {
     CategoryPlayer   = 0x01,
     CategoryStatic   = 0x02,
     CategoryDynamic  = 0x04,
-    CategoryLaser    = 0x08,
+    CategoryLight    = 0x08,
 };
 
 using ObjectId = u32;
@@ -192,6 +192,7 @@ struct GameObject {
     GameObject(Player& player)
         : type(GOT_Player), player(player)
     {}
+    GameObject(LaserEmitter& emitter) : type(GOT_LaserEmitter), emitter(emitter)  {}
 };
 
 int spatial_hash(vec2 pos);
@@ -316,8 +317,9 @@ struct GameState {
     void add_wall(vec2 position, vec2 scale);
 };
 
-// laser update
-void calculate_light();
+// light update
+void calculate_light(GameState& state);
+int calculate_light_beam(b2WorldId worldId, vec2 start, float range);
 
 b2Filter make_filter(u64 categoryBits, u64 maskBits, int groupIndex);
 
