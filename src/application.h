@@ -21,12 +21,6 @@ struct Window {
     SDL_Window* window;
 };
 
-struct Assets {
-    Font font_small = {};
-    Font font_medium = {};
-    Font font_large = {};
-};
-
 #define NS_PER_SECONDS 1'000'000'000
 
 struct Event_Timeout {
@@ -49,11 +43,9 @@ public:
     RenderContext m_render = {};
     Input m_input = {};
 
-    Assets m_assets = {};
     AssetCatalog m_catalog = {};
     AudioPlayer m_audio_player = {};
 
-    Ui_State m_ui = {};
     Color m_background_color = DEFAULT_BACKGROUND_COLOR;
 
     s64 m_time = 0;
@@ -66,10 +58,6 @@ public:
     Array<Text> m_rendered_text = {};
 
     bool quit = false;
-
-#if PHYSICS_DEBUG
-    b2DebugDraw phys_debug_draw;
-#endif
 
     bool initialize();
 

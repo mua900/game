@@ -42,15 +42,9 @@ ColorF::ColorF(const Color& color) {
     a = (float)color.a * coef;
 }
 
-
-float lerp(float a, float b, float t)
-{
-    return a * (1.0f - t) + b * t;
-}
-
 vec2 lerp2(vec2 a, vec2 b, float t)
 {
-    return vec2(lerp(a.x, b.x, t), lerp(a.y, b.y, t));
+    return vec2(std::lerp(a.x, b.x, t), std::lerp(a.y, b.y, t));
 }
 
 vec2 reflect2(vec2 incident, vec2 normal)
@@ -69,4 +63,3 @@ bool Rectangle::contains(vec2 p) const
 {
     return p.x >= x && p.y >= y && p.x <= x + w && p.y <= y + h;
 }
-

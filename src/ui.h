@@ -29,23 +29,9 @@ struct Text {
     }
 };
 
-enum Text_Id : int {
-    // static text
-    TEXT_PAUSED = 0,
-    TEXT_PLAYING,
-    TEXT_PAUSE,
-    TEXT_RESUME,
-    TEXT_SAMPLE_RATE,
-    TEXT_INVALID_EXPRESSION,
-    TEXT_VALID_EXPRESSION,
-    TEXT_INVALID_SAMPLE_RATE,
-    TEXT_SOUND_MODE,
-    TEXT_GRAPH_MODE,
-
-    // dynamic text
-    TEXT_VOLUME_VALUE,
-    TEXT_PAN_VALUE,
-
+enum Text_Id {
+    // @todo
+    TEXT_DUMMY = 0,
     TEXT_COUNT,
 };
 
@@ -307,37 +293,4 @@ struct Drop_Down_List {
         }
         options.reset();
     }
-};
-
-enum GraphToShow {
-    GRAPH_AUDIO_DATA,
-    GRAPH_FOURIER_TRANSFORM,
-};
-
-struct Ui_State {
-    Text_Input_Target text_input_target = NO_TARGET;
-
-    // graph mode ui
-    Rectangle playback_pause = {0,0,100,100};
-    Drop_Down_List graph_to_show = {};
-
-    // sound mode ui
-    Rectangle volume_slider = { 100, 100, 100, 10 };
-
-    Text_Field variable_name = {};
-    Rectangle add_variable_button = { 500, 100, 50, 50 };
-
-    Rectangle pause_button = { INIT_WINDOW_WIDTH / 2 - 50, INIT_WINDOW_HEIGHT / 2 - 50, 100, 100 };
-    Rectangle graphs_button = { INIT_WINDOW_WIDTH * (4.0 / 5.0), 0, INIT_WINDOW_WIDTH * (1.0 / 5.0), 100 };
-
-    Text_Field expression_input_left = {};
-    Text_Field expression_input_right = {};
-
-    DArray<Text_Field> variable_values = {};
-    int selected_variable_value_index = 0;  // if a variable value from the list is selected
-
-    Drop_Down_List channel_count = {};
-    Drop_Down_List playback_device = {};
-
-    Text_Field* get_selected_text_field();
 };

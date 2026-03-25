@@ -3,6 +3,82 @@
 #include "common.h"
 
 template <typename T>
+struct Array {
+	T* data = NULL;
+	int size = 0;
+
+	Array() {}
+	Array(T* data, int size) : data(data), size(size) {}
+
+	T& operator[](int index) {
+		return data[index];
+	}
+
+	T get(int index) const {
+		if (index >= size) panic("Out of bounds array access");
+		return data[index];
+	}
+
+	T get_or_default(int index) const {
+		if (index >= size) return T();
+		return data[index];
+	}
+
+	Find_Result find(T& elem) const {
+		for (int i = 0; i < size; i++)
+		{
+			if (data[i] == elem)
+			{
+				return Find_Result {i, true};
+			}
+		}
+
+		return Find_Result {0, false};
+	}
+
+	bool operator==(const Array<T>& other) const {
+		if (size != other.size) {
+			return false;
+		}
+
+		for (int i = 0; i < size; i++) {
+			if (data[i] != other.data[i]) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	void free_data()
+	{
+		delete[] data;
+		size = 0;
+	}
+
+	T* begin() {
+		return data;
+	}
+
+	T* end() {
+		return data + size;
+	}
+
+	const T* begin() const {
+		return data;
+	}
+
+	const T* end() const {
+		return data + size;
+	}
+};
+
+template<typename T, int N>
+Array<T> make_array(T (&arr)[N]) {
+	return Array<T>(arr, N);
+}
+
+template <typename T>
 struct DArray {
 private:
 	T* m_data = NULL;
@@ -21,6 +97,18 @@ public:
 
 	void discard_data() {
 		m_size = 0;
+	}
+
+	// to use this as an allocator
+	Array<T> get_array(int size)
+	{
+		ensure_size(size);
+		return Array<T>(m_data, size);
+	}
+
+	Array<T> to_array() const
+	{
+		return Array<T> (m_data, m_size);
 	}
 
 	void reset() {
@@ -56,6 +144,11 @@ public:
 	T* get_ptr(int index) const {
 		if (index >= m_size) panic("Out of bounds array access");
 		return &m_data[index];
+	}
+
+	T& operator[](int index) const
+	{
+		return get_ref(index);
 	}
 
 	int add(const T& elem)	{
@@ -223,83 +316,6 @@ private:
 		m_cap = ncap;
 	}
 };
-
-template <typename T>
-struct Array {
-	T* data = NULL;
-	int size = 0;
-
-	Array() {}
-	Array(T* data, int size) : data(data), size(size) {}
-	Array(DArray<T> darray) : data(darray.data()), size(darray.size()) {}
-
-	T& operator[](int index) {
-		return data[index];
-	}
-
-	T get(int index) const {
-		if (index >= size) panic("Out of bounds array access");
-		return data[index];
-	}
-
-	T get_or_default(int index) const {
-		if (index >= size) return T();
-		return data[index];
-	}
-
-	Find_Result find(T& elem) const {
-		for (int i = 0; i < size; i++)
-		{
-			if (data[i] == elem)
-			{
-				return Find_Result {i, true};
-			}
-		}
-
-		return Find_Result {0, false};
-	}
-
-	bool operator==(const Array<T>& other) const {
-		if (size != other.size) {
-			return false;
-		}
-
-		for (int i = 0; i < size; i++) {
-			if (data[i] != other.data[i]) {
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	void free_data()
-	{
-		delete[] data;
-		size = 0;
-	}
-
-	T* begin() {
-		return data;
-	}
-
-	T* end() {
-		return data + size;
-	}
-
-	const T* begin() const {
-		return data;
-	}
-
-	const T* end() const {
-		return data + size;
-	}
-};
-
-template<typename T, int N>
-Array<T> make_array(T (&arr)[N]) {
-	return Array<T>(arr, N);
-}
 
 template<typename T>
 struct BucketList {

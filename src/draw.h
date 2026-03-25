@@ -12,9 +12,9 @@ struct RenderContext {
     vec2 render_size = vec2();
     SDL_Renderer* renderer = nullptr;
 
-#if PHYSICS_DEBUG
-    b2DebugDraw phys_draw;
-#endif
+    // vertex and index cache for functions that use lower level SDL utilities for rendering
+    DArray<SDL_Vertex> vertices;
+    DArray<int> indices;
 };
 
 void render_rectangle(RenderContext context, Rectangle rect, Color color);
@@ -29,8 +29,10 @@ void render_text_scale(SDL_Renderer* renderer, Text text, vec2 where, vec2 scale
 void draw_arrowhead(SDL_Renderer* renderer, vec2 position, vec2 direction, float scale, ColorF color);
 void draw_arrow(SDL_Renderer* renderer, vec2 start, vec2 end, float thickness, ColorF color);
 void draw_rounded_rectangle(SDL_Renderer* renderer, vec2 center, vec2 base_scale, float corner_radius, ColorF color);
+void draw_rounded_polygon(RenderContext context, Array<vec2> corners, float radius, ColorF color);
 void draw_capsule(SDL_Renderer* renderer, vec2 center0, vec2 center1, float radius, ColorF color);
 void draw_circle(SDL_Renderer* renderer, vec2 position, float radius, ColorF color);
-void draw_segment(SDL_Renderer* renderer, vec2 start, vec2 end, ColorF color);
+void draw_segment(SDL_Renderer* renderer, vec2 start, vec2 end, float thick, ColorF color);
+void draw_lines(RenderContext context, Array<vec2> points, float thickness, ColorF color);
 
 #endif // _DRAW_H

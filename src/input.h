@@ -4,6 +4,15 @@
 
 #include <SDL3/SDL.h>
 
+#define KEY_W SDL_SCANCODE_W
+#define KEY_D SDL_SCANCODE_D
+#define KEY_S SDL_SCANCODE_S
+#define KEY_A SDL_SCANCODE_A
+#define KEY_Q SDL_SCANCODE_Q
+#define KEY_E SDL_SCANCODE_E
+#define KEY_X SDL_SCANCODE_X
+#define KEY_Z SDL_SCANCODE_Z
+#define KEY_C SDL_SCANCODE_C
 #define KEY_SPACE SDL_SCANCODE_SPACE
 #define KEY_RETURN SDL_SCANCODE_RETURN
 #define KEY_UP SDL_SCANCODE_UP
@@ -12,6 +21,8 @@
 #define KEY_LEFT SDL_SCANCODE_LEFT
 
 typedef SDL_MouseButtonFlags Mouse_Flags;
+
+// @todo gamepad
 
 struct KeyboardState {
     const bool* keys = {};

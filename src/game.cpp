@@ -1,5 +1,7 @@
 #include "game.h"
 
+#include "draw_data.h"
+
 float lightCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context );
 float playerCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context );
 
@@ -11,8 +13,7 @@ struct PlayerCastContext {
 };
 
 struct LightCastContext {
-
-    int hit_count = 0;
+    LineDrawData draw_data;
 };
 
 // @note beware that the fixed update loop is most likely isn't going to run in the first iteration of the application loop
@@ -30,7 +31,7 @@ bool GameState::initialize()
     Player player;
     player.speed = 100;
     b2Filter playerFilter = make_filter(CategoryPlayer, CategoryStatic | CategoryDynamic, 0);
-    player.transform.body = make_body_circle(worldId, playerPosition, playerRadius, b2_kinematicBody, playerFilter);
+    player.transform.body = make_body_circle(worldId, playerPosition, 10, b2_kinematicBody, playerFilter);
     player.draw.color = ColorF(0.6, 0.7, 0.6, 1.0);
 
 #if PHYSICS_DEBUG
@@ -54,9 +55,10 @@ bool GameState::initialize()
     ball.transform.body = make_body_circle(worldId, vec2(500, 100), 20.0, b2_dynamicBody, dynamicFilter);
     add_object(GameObject(ball));
 
-    b2Filter emitter_filter = make_filter(CategoryDynamic, CategoryStatic | CategoryDynamic | CategoryLight, 1);
+    b2Filter emitter_filter = make_filter(CategoryDynamic, CategoryPlayer | CategoryStatic | CategoryDynamic | CategoryLight, 1);
     Transform emitter_transform = Transform(make_body_circle(worldId, vec2(600, 600), 10, b2_dynamicBody, emitter_filter));
     LaserEmitter emitter(emitter_transform);
+    emitter.direction = vec2(1,1).normalized();
     add_object(GameObject(emitter));
 
     return true;
@@ -138,8 +140,9 @@ void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
                 break;
             }
             case GOT_LaserEmitter: {
-
-
+                LaserEmitter& emitter = object.emitter;
+                emitter.draw_data.points.discard_data();
+                calculate_light_beam(worldId, emitter.transform.get_position(), emitter.direction , 100);
                 break;
             }
             case GOT_LaserCollector: { break; }
@@ -153,9 +156,6 @@ void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
     }
 
     b2World_Step(worldId, timeStep, 4);
-
-    // laser update
-    calculate_light(*this);
 }
 
 void GameState::cleanup()
@@ -163,29 +163,18 @@ void GameState::cleanup()
     b2DestroyWorld(worldId);
 }
 
-void calculate_light(GameState& state)
-{
-    for (auto& object : state.game_objects)
-    {
-        if (object.type == GOT_LaserEmitter)
-        {
-            LaserEmitter& emitter = object.emitter;
-            calculate_light_beam(state.worldId, emitter.transform.get_position(), 50);
-        }
-    }
-}
-
-int calculate_light_beam(b2WorldId worldId, vec2 start, float range)
+int calculate_light_beam(b2WorldId worldId, vec2 start, vec2 dir, float range)
 {
     b2QueryFilter filter = b2DefaultQueryFilter();
     filter.categoryBits = CategoryLight;
     filter.maskBits = CategoryStatic | CategoryDynamic | CategoryPlayer; // ~CategoryLight;
     b2Vec2 pos = {  start.x, start.y };
-    b2Vec2 end = { start.x + cosf(range), start.y + sinf(range) };
+    vec2 direction = dir * range;
+    b2Vec2 end = { start.x + direction.x, start.y + direction.y };
 
     LightCastContext context = {  };
     b2World_CastRay( worldId, pos, end, filter, lightCastResult, &context );
-    return context.hit_count;
+    return context.draw_data.points.size();
 }
 
 vec2 get_input_direction(const Input& input)
@@ -326,6 +315,9 @@ int spatial_hash(vec2 pos)
 
 float lightCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context )
 {
+    LightCastContext* castContext = (LightCastContext*) context;
+    vec2 p = { point.x, point.y };
+    castContext->draw_data.points.add(p);
     return fraction;
 }
 

@@ -88,8 +88,6 @@ vec2 lerp2(vec2 a, vec2 b, float t);
 vec2 reflect2(vec2 incident, vec2 normal);
 vec2 get_direction_vector(float angle);
 
-float my_lerp(float a, float b, float t);
-
 struct ColorF;
 
 struct Color {

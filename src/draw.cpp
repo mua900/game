@@ -47,6 +47,7 @@ void draw_game(RenderContext context, const GameState& state)
                 const LaserEmitter& emitter = object.emitter;
                 vec2 pos = emitter.transform.get_position();
                 draw_circle(context.renderer, pos, 10, ColorF(0.9, 0.4, 0.3, 1.0));
+                draw_lines(context, emitter.draw_data.points.to_array(), 5, ColorF(1,0,0,1));
                 break;
             }
         }
@@ -132,6 +133,37 @@ void draw_arrowhead(SDL_Renderer* renderer, vec2 position, vec2 direction, float
     const int indices[3] = {0, 1, 2};
 
     SDL_RenderGeometry(renderer, NULL, vertices, 3, indices, 3);
+}
+
+void draw_segment(SDL_Renderer* renderer, vec2 start, vec2 end, float thick, ColorF color)
+{
+    vec2 dir = (end - start).normalized();
+    vec2 perp = vec2(-dir.y, dir.x);
+
+    vec2 sleft = start + perp * thick;
+    vec2 sright = start - perp * thick;
+    vec2 eleft = end + perp * thick;
+    vec2 eright = end - perp * thick;
+
+    SDL_Vertex vertices[4];
+    int indices[6];
+    vertices[0].position = { sleft.x, sleft.y };
+    vertices[0].color = { COLOR_ARG(color) };
+    vertices[1].position = { sright.x, sright.y };
+    vertices[1].color = { COLOR_ARG(color) };
+    vertices[2].position = { eleft.x, eleft.y };
+    vertices[2].color = { COLOR_ARG(color) };
+    vertices[3].position = { eright.x, eright.y };
+    vertices[3].color = { COLOR_ARG(color) };
+
+    indices[0] = 0;
+    indices[1] = 1;
+    indices[2] = 2;
+    indices[3] = 2;
+    indices[4] = 1;
+    indices[5] = 3;
+
+    SDL_RenderGeometry(renderer, nullptr, vertices, 4, indices, 6);
 }
 
 void draw_arrow(SDL_Renderer* renderer, vec2 start, vec2 end, float thickness, ColorF color)
@@ -234,7 +266,65 @@ void draw_circle(SDL_Renderer* renderer, vec2 position, float radius, ColorF col
 // @todo
 void draw_rounded_rectangle(SDL_Renderer* renderer, vec2 position, vec2 base_scale, float corner_radius, ColorF color);
 
-void draw_rounded_polygon(SDL_Renderer* renderer, vec2 center, vec2* corners, int corner_count, float radius, ColorF color);
+// @todo fix
+void draw_rounded_polygon(RenderContext context, Array<vec2> corners, float radius, ColorF color)
+{
+    #define NVERTICES_PER_CORNER 8
+
+    vec2 center = {};
+    for (auto p : corners)
+        center += p;
+
+    center /= corners.size;
+
+    const int num_vertices = corners.size * NVERTICES_PER_CORNER + 1;
+    const int num_indices = corners.size * NVERTICES_PER_CORNER * 3;
+    Array<SDL_Vertex> vertices = context.vertices.get_array(num_vertices);
+    Array<int> indices = context.indices.get_array(num_indices);
+
+    int center_index = num_vertices - 1;
+    vertices.data[center_index].position = SDL_FPoint{ center.x, center.y };
+    vertices.data[center_index].color = SDL_FColor { COLOR_ARG(color) };
+
+    float angle = (M_PI * 2.0f) / float(corners.size * NVERTICES_PER_CORNER);
+    float cosine = std::cosf(angle);
+    float sine = std::sinf(angle);
+
+    float real = 1.0;
+    float imag = 0.0;
+    for (int corner = 0; corner < corners.size; corner++)
+    {
+        for (int v = 0; v < NVERTICES_PER_CORNER; v ++)
+        {
+            int index = corner * NVERTICES_PER_CORNER + v;
+            vec2 corner_position = corners.data[corner];
+            corner_position.x += radius * real;
+            corner_position.y += radius * imag;
+            vertices[index].position = SDL_FPoint { corner_position.x, corner_position.y };
+            vertices[index].color = SDL_FColor { COLOR_ARG(color) };
+
+            float nreal = real * cosine - imag * sine;
+            float nimag = real * sine   + imag * cosine;
+            real = nreal;
+            imag = nimag;
+        }
+    }
+
+    for (int corner = 0; corner < corners.size; corner ++)
+    {
+        for (int v = 0; v < NVERTICES_PER_CORNER; v++)
+        {
+            int index = corner * NVERTICES_PER_CORNER + v;
+            indices.data[index * 3 + 0] = center_index;
+            indices.data[index * 3 + 1] = (index + 0) % (num_vertices - 1);
+            indices.data[index * 3 + 2] = (index + 1) % (num_vertices - 1);
+        }
+    }
+
+    SDL_RenderGeometry(context.renderer, nullptr, vertices.data, num_vertices, indices.data, num_indices);
+
+    #undef NVERTICES_PER_CORNER
+}
 
 void draw_capsule(SDL_Renderer* renderer, vec2 center0, vec2 center1, float radius, ColorF color)
 {
@@ -298,4 +388,47 @@ void draw_capsule(SDL_Renderer* renderer, vec2 center0, vec2 center1, float radi
 
     SDL_RenderGeometry(renderer, NULL, vertices, ARRAY_SIZE(vertices), indices, ARRAY_SIZE(indices));
     #undef NVERTICES
+}
+
+void draw_lines(RenderContext context, Array<vec2> points, float thickness, ColorF color)
+{
+    if (points.size < 2) return;
+
+    const int num_vertices = points.size * 2;
+    const int num_indices = (points.size - 1) * 2 * 3;
+    Array<SDL_Vertex> vertices = context.vertices.get_array(num_vertices);
+    Array<int> indices = context.indices.get_array(num_indices);
+
+    for (int i = 0; i < points.size - 1; i++)
+    {
+        vec2 curr = points.data[i];
+        vec2 next = points.data[i + 1];
+        vec2 direction = (next - curr).normalized();
+        vec2 perp = vec2(-direction.y, direction.x);
+
+        vertices[i * 2 + 0].position = SDL_FPoint { curr.x + perp.x * thickness / 2, curr.y + perp.y * thickness / 2 };
+        vertices[i * 2 + 0].color = SDL_FColor { COLOR_ARG(color) };
+        vertices[i * 2 + 1].position = SDL_FPoint { curr.x - perp.x * thickness / 2, curr.y - perp.y * thickness / 2 };
+        vertices[i * 2 + 1].color = SDL_FColor { COLOR_ARG(color) };
+    }
+
+    int last = points.size - 1;
+    vec2 dir = (points.data[last] - points.data[last - 1]).normalized();
+    vec2 perp = vec2(-dir.y, dir.x);
+    vertices[last * 2 + 0].position = SDL_FPoint { points.data[last].x + perp.x * thickness / 2,points.data[last].y + perp.y * thickness / 2 };
+    vertices[last * 2 + 0].color = SDL_FColor { COLOR_ARG(color) };
+    vertices[last * 2 + 1].position = SDL_FPoint { points.data[last].x - perp.x * thickness / 2,points.data[last].y - perp.y * thickness / 2 };
+    vertices[last * 2 + 1].color = SDL_FColor { COLOR_ARG(color) };
+
+    for (int i = 0; i < points.size - 1; i++)
+    {
+        indices[i * 6 + 0] = i * 2 + 0;
+        indices[i * 6 + 1] = i * 2 + 1;
+        indices[i * 6 + 2] = (i + 1) * 2 + 0;
+        indices[i * 6 + 3] = (i + 1) * 2 + 0;
+        indices[i * 6 + 4] = i * 2 + 1;
+        indices[i * 6 + 5] = (i + 1) * 2 + 1;
+    }
+
+    SDL_RenderGeometry(context.renderer, nullptr, vertices.data, num_vertices, indices.data, num_indices);
 }

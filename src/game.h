@@ -5,6 +5,7 @@
 #include "template.h"
 
 #include "input.h"
+#include "draw_data.h"
 
 #include "box2d/box2d.h"
 
@@ -33,13 +34,6 @@ enum GameCollisionCategories {
 };
 
 using ObjectId = u32;
-
-struct DrawData {
-    ColorF color;
-
-    DrawData() {}
-    DrawData(ColorF color) : color(color) {}
-};
 
 struct Transform {
     b2BodyId body;
@@ -90,6 +84,8 @@ struct LaserCollector {
 
 struct LaserEmitter {
     Transform transform;
+    vec2 direction;
+    LineDrawData draw_data;
 
 	LaserEmitter(Transform transform) : transform(transform) {}
 };
@@ -150,8 +146,6 @@ struct Wall {
     {}
 };
 
-static const float playerRadius = 10;
-
 struct Player {
 #if PHYSICS_DEBUG
     b2ContactData contacts[8];
@@ -205,7 +199,7 @@ struct SpatialGridCell {
     int overflow_cell;
 };
 
-// @todo are we going to need this? If not just remove
+// @todo are we going to need this?
 struct SpatialGrid {
     SpatialGridCell* cells;
     int dimension_x;
@@ -318,8 +312,7 @@ struct GameState {
 };
 
 // light update
-void calculate_light(GameState& state);
-int calculate_light_beam(b2WorldId worldId, vec2 start, float range);
+int calculate_light_beam(b2WorldId worldId, vec2 start, vec2 dir, float range);
 
 b2Filter make_filter(u64 categoryBits, u64 maskBits, int groupIndex);
 
