@@ -9,7 +9,7 @@
 
 #include "box2d/box2d.h"
 
-#define PHYSICS_DEBUG 1
+#define PHYSICS_DEBUG 0
 
 enum GameObjectType {
     GOT_Wall,
@@ -312,7 +312,7 @@ struct GameState {
 };
 
 // light update
-int calculate_light_beam(b2WorldId worldId, vec2 start, vec2 dir, float range);
+int calculate_light_beam(b2WorldId worldId, vec2 start, vec2 dir, LineDrawData* castContext, float range);
 
 b2Filter make_filter(u64 categoryBits, u64 maskBits, int groupIndex);
 
