@@ -9,7 +9,7 @@
 
 #include "box2d/box2d.h"
 
-#define PHYSICS_DEBUG 0
+#define PHYSICS_DEBUG 1
 
 enum GameObjectType {
     GOT_Wall,
@@ -171,6 +171,7 @@ struct GameObject {
         Mirror mirror;
         LaserReflector reflector;
         EnergyGate gate;
+        EnergySource source;
         WavelengthShifter shifter;
         LaserSplitter splitter;
     };
@@ -189,98 +190,34 @@ struct GameObject {
     GameObject(LaserEmitter& emitter) : type(GOT_LaserEmitter), emitter(emitter)  {}
 };
 
-int spatial_hash(vec2 pos);
+vec2 get_object_position(GameObject object);
 
 #define OVERFLOW_CELL_INDEX_SENTINEL -1
 #define CELL_CAPACITY 8
-struct SpatialGridCell {
+struct GridCell {
     ObjectId objects[CELL_CAPACITY];
     int count;
     int overflow_cell;
 };
 
-// @todo are we going to need this?
 struct SpatialGrid {
-    SpatialGridCell* cells;
+    GridCell* cells;
     int dimension_x;
     int dimension_y;
-    DArray<SpatialGridCell> overflow_cells;
+    float cell_size;
+    DArray<GridCell> overflow_cells;
 
-    void initialize(int dim_x, int dim_y)
-    {
-        dimension_x = dim_x;
-        dimension_y = dim_y;
-
-        cells = new SpatialGridCell[dim_x * dim_y];
-    }
-
-    int size()
-    {
-        return dimension_x * dimension_y;
-    }
-
-    int calculate_cell_index(vec2 position)
-    {
-        int hash = spatial_hash(position);
-        hash = abs(hash);
-        hash %= size();
-        return hash;
-    }
-
-    void add(vec2 position, ObjectId object)
-    {
-        int cell_index = calculate_cell_index(position);
-        add_to_cell(cells[cell_index], object);
-    }
-
-    void remove(vec2 position, int object)
-    {
-        int cell_index = calculate_cell_index(position);
-        remove_from_cell(cells[cell_index], object);
-    }
-
-    SpatialGridCell get_cell(vec2 position)
-    {
-        int cell_index = calculate_cell_index(position);
-        return cells[cell_index];
-    }
+    void initialize(int dim_x, int dim_y, float p_cell_size);
+    int size();
+    void add(vec2 position, ObjectId object);
+    void remove(vec2 position, int object);
+    GridCell* get_cell(vec2 position);
+    int calculate_cell_index(vec2 position);
+private:
 
     // if we want the entries to be unique we would need to check all of them which we can do in a separate function as an opt in way
-    void add_to_cell(SpatialGridCell& cell, ObjectId object)
-    {
-        if (cell.count == CELL_CAPACITY)
-        {
-            if (cell.overflow_cell == OVERFLOW_CELL_INDEX_SENTINEL)
-            {
-                int oc = overflow_cells.add(SpatialGridCell());
-                cell.overflow_cell = oc;
-            }
-
-            add_to_cell(overflow_cells.get_ref(cell.overflow_cell), object);
-            return;
-        }
-
-        cell.objects[cell.count] = object;
-        cell.count += 1;
-    }
-
-    void remove_from_cell(SpatialGridCell& cell, ObjectId object)
-    {
-        for (int i = 0; i < cell.count; i++)
-        {
-            if (cell.objects[i] == object)
-            {
-                cell.objects[i] = cell.objects[cell.count - 1];
-                cell.count -= 1;
-                return;
-            }
-        }
-
-        if (cell.overflow_cell != OVERFLOW_CELL_INDEX_SENTINEL)
-        {
-            remove_from_cell(overflow_cells.get_ref(cell.overflow_cell), object);
-        }
-    }
+    void add_to_cell(GridCell& cell, ObjectId object);
+    void remove_from_cell(GridCell& cell, ObjectId object);
 };
 
 struct GameState {
@@ -300,11 +237,13 @@ struct GameState {
     ObjectId add_object(const GameObject& obj)
     {
         int object_index = game_objects.add(obj);
+        grid.add(get_object_position(obj), object_index);
         return ObjectId(object_index);
     }
 
     void remove_object(ObjectId object)
     {
+        grid.remove(get_object_position(game_objects.get(object)), object);
         game_objects.remove(object);
     }
 
@@ -312,6 +251,7 @@ struct GameState {
 };
 
 // light update
+void calculate_light();
 int calculate_light_beam(b2WorldId worldId, vec2 start, vec2 dir, LineDrawData* castContext, float range);
 
 b2Filter make_filter(u64 categoryBits, u64 maskBits, int groupIndex);

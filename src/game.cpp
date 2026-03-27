@@ -22,7 +22,7 @@ struct LightCastContext {
 
 bool GameState::initialize()
 {
-    grid.initialize(100, 100);
+    grid.initialize(100, 100, 100);
 
     b2WorldDef worldDef = b2DefaultWorldDef();
     worldDef.gravity = { 0.0f, 0.0f };
@@ -153,7 +153,9 @@ void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
                 calculate_light_beam(worldId, position + emitter.direction * 10, emitter.direction, &emitter.draw_data , 1000);
                 break;
             }
-            case GOT_LaserCollector: { break; }
+            case GOT_LaserCollector: {
+                break;
+            }
             case GOT_Mirror: { break; }
             case GOT_LaserReflector: { break; }
             case GOT_WavelengthShifter: { break; }
@@ -316,11 +318,6 @@ AABB scale_bounding_box(AABB original, vec2 scale)
     return original;
 }
 
-int spatial_hash(vec2 pos)
-{
-    return int(floor(pos.x) * 962623) ^ int(floor(pos.y) * 1193771);
-}
-
 float lightCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context )
 {
     LightCastContext* castContext = (LightCastContext*) context;
@@ -331,20 +328,7 @@ float lightCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fra
         return -1;
 
     castContext->draw_data->points.add(p);
-    b2ShapeType type = b2Shape_GetType(shapeId);
 
-    const char* name;
-    switch (type) {
-    	case b2_circleShape:       name = "b2_circleShape"; break;
-    	case b2_capsuleShape:      name = "b2_capsuleShape"; break;
-    	case b2_segmentShape:      name = "b2_segmentShape"; break;
-    	case b2_polygonShape:      name = "b2_polygonShape"; break;
-    	case b2_chainSegmentShape: name = "b2_chainSegmentShape"; break;
-    }
-
-    static int count = 0;
-    count += 1;
-    printf("Hit something %d %s  point count: %d\n", count, name, castContext->draw_data->points.size());
     return 1;
 }
 
@@ -364,8 +348,6 @@ float playerCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fr
         return 0;
     }
 
-    const float skin_width = 0.05;
-
     float distance = (point_vector - position).magnitude();
     float remaining = speed - distance;
 
@@ -380,4 +362,113 @@ float playerCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fr
     player->transform.set_velocity(velocity);
 
     return 0;
+}
+
+
+vec2 get_object_position(GameObject object)
+{
+    switch (object.type)
+    {
+        case GOT_Wall:              { return object.wall.transform.get_position(); }
+        case GOT_Ball:              { return object.ball.transform.get_position(); }
+        case GOT_Player:            { return object.player.transform.get_position(); }
+        case GOT_LaserEmitter:      { return object.emitter.transform.get_position(); }
+        case GOT_LaserCollector:    { return object.collector.transform.get_position(); }
+        case GOT_Mirror:            { return object.mirror.transform.get_position(); }
+        case GOT_LaserReflector:    { return object.reflector.transform.get_position(); }
+        case GOT_WavelengthShifter: { return object.shifter.transform.get_position(); }
+        case GOT_LaserSplitter:     { return object.splitter.transform.get_position(); }
+        case GOT_EnergyGate:        { return object.gate.transform.get_position(); }
+        case GOT_EnergySource:      { return object.source.transform.get_position(); }
+    }
+
+    return vec2(0,0);
+}
+
+
+int spatial_hash(vec2 pos)
+{
+    return int(floor(pos.x) * 962623) ^ int(floor(pos.y) * 1193771);
+}
+
+int cell_hash(vec2 pos, float cell_size)
+{
+    return spatial_hash(pos / cell_size);
+}
+
+void SpatialGrid::initialize(int dim_x, int dim_y, float p_cell_size)
+{
+    dimension_x = dim_x;
+    dimension_y = dim_y;
+    cell_size = p_cell_size;
+
+    cells = new GridCell[dim_x * dim_y];
+}
+
+int SpatialGrid::size()
+{
+    return dimension_x * dimension_y;
+}
+
+int SpatialGrid::calculate_cell_index(vec2 position)
+{
+    int hash = cell_hash(position, cell_size);
+    hash = abs(hash);
+    hash %= size();
+    return hash;
+}
+
+void SpatialGrid::add(vec2 position, ObjectId object)
+{
+    int cell_index = calculate_cell_index(position);
+    add_to_cell(cells[cell_index], object);
+}
+
+void SpatialGrid::remove(vec2 position, int object)
+{
+    int cell_index = calculate_cell_index(position);
+    remove_from_cell(cells[cell_index], object);
+}
+
+GridCell* SpatialGrid::get_cell(vec2 position)
+{
+    int cell_index = calculate_cell_index(position);
+    return &cells[cell_index];
+}
+
+// if we want the entries to be unique we would need to check all of them which we can do in a separate function as an opt in way
+void SpatialGrid::add_to_cell(GridCell& cell, ObjectId object)
+{
+    if (cell.count == CELL_CAPACITY)
+    {
+        if (cell.overflow_cell == OVERFLOW_CELL_INDEX_SENTINEL)
+        {
+            int oc = overflow_cells.add(GridCell());
+            cell.overflow_cell = oc;
+        }
+
+        add_to_cell(overflow_cells.get_ref(cell.overflow_cell), object);
+        return;
+    }
+
+    cell.objects[cell.count] = object;
+    cell.count += 1;
+}
+
+void SpatialGrid::remove_from_cell(GridCell& cell, ObjectId object)
+{
+    for (int i = 0; i < cell.count; i++)
+    {
+        if (cell.objects[i] == object)
+        {
+            cell.objects[i] = cell.objects[cell.count - 1];
+            cell.count -= 1;
+            return;
+        }
+    }
+
+    if (cell.overflow_cell != OVERFLOW_CELL_INDEX_SENTINEL)
+    {
+        remove_from_cell(overflow_cells.get_ref(cell.overflow_cell), object);
+    }
 }

@@ -47,7 +47,6 @@ void draw_game(RenderContext context, const GameState& state)
                 const LaserEmitter& emitter = object.emitter;
                 vec2 pos = emitter.transform.get_position();
                 draw_circle(context.renderer, pos, 10, ColorF(0.9, 0.4, 0.3, 1.0));
-                draw_segment(context.renderer, pos, pos + emitter.direction * 100, 10, ColorF(0.5,0.6,0.3,1));
                 draw_lines(context, emitter.draw_data.points.to_array(), 10, ColorF(1,0,0,1));
                 break;
             }
