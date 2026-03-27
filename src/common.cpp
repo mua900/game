@@ -256,11 +256,15 @@ void File::write_number(double n) {
 	fwrite(&n, sizeof(n), 1, handle);
 }
 
+void File::write_byte(u8 byte) {
+    fwrite(&byte, 1, 1, handle);
+}
+
 void File::write_integer(u64 n) {
 	fwrite(&n, sizeof(n), 1, handle);
 }
 
-String File::read_string() {
+String File::read_string() const {
 	u32 size = 0;  // type must match String.size
 	fread(&size, sizeof(size), 1, handle);
 
@@ -272,16 +276,45 @@ String File::read_string() {
 	return String(data, size);
 }
 
-double File::read_number() {
+double File::read_number() const {
 	double n = 0;
 	fread(&n, sizeof(n), 1, handle);
 	return n;
 }
 
-u64 File::read_integer() {
+u64 File::read_integer() const {
 	u64 n = 0;
 	fread(&n, sizeof(n), 1, handle);
 	return n;
+}
+
+int File::read_byte() const {
+	int n = 0;
+	fread(&n, 1, 1, handle);
+	return n;
+}
+
+void FileText::write_string(String s, bool nline)
+{
+    const char* format = nline ? "%.*s\n" : "%.*s";
+    fprintf(handle, format, s.size, s.data);
+}
+
+void FileText::write_number(double n, bool nline)
+{
+    const char* format = nline ? "%.5f\n" : "%.5f";
+    fprintf(handle, format, n);
+}
+
+void FileText::write_integer(u64 n, bool nline)
+{
+    const char* format = nline ? "%d\n" : "%d";
+    fprintf(handle, format, n);
+}
+
+void FileText::write_character(char c)
+{
+    fprintf(handle, "%c", c);
 }
 
 void String_Builder::create(int initial_capacity)
@@ -382,19 +415,6 @@ void String_Builder::append_float(float n) {
 void String_Builder::clear_and_append(String s) {
     size = 0;
     append(s);
-}
-
-void String_Builder::append_many(String* strings, int n) {
-    int total_length = 0;
-    for (int i = 0; i < n; i++) {
-        total_length += strings[i].size;
-    }
-
-    ensure_size(this->size + total_length);
-    for (int i = 0; i < n; i++) {
-        memcpy(this->buffer + this->size, strings[i].data, strings[i].size);
-        size += strings[i].size;
-    }
 }
 
 const char* String_Builder::c_string() {

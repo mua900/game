@@ -79,9 +79,27 @@ int pop_msb(u64* x);
 int lsb_index(u64 x);
 int msb_index(u64 x);
 
+struct Find_Result {
+	int index = 0;
+	bool found = false;
+
+    Find_Result(int index, bool found) : index(index), found(found) {}
+    Find_Result() {}
+};
+
 struct BinaryData {
 	u8* data = nullptr;
 	size_t size = 0;
+
+    BinaryData()
+    {}
+
+    BinaryData(size_t p_size)
+    {
+        data = (u8*) malloc(p_size);
+        if (!data) panic("Memory allocation failure");
+        size = p_size;
+    }
 
     ~BinaryData() {
         if (data) {
@@ -91,21 +109,6 @@ struct BinaryData {
             size = 0;
         }
     }
-
-	void release() {
-		if (data) {
-			free(data);
-			data = nullptr;
-		}
-	}
-};
-
-struct Find_Result {
-	int index = 0;
-	bool found = false;
-
-    Find_Result(int index, bool found) : index(index), found(found) {}
-    Find_Result() {}
 };
 
 int string_length(const char* cstr);
@@ -176,7 +179,6 @@ struct String_Builder {
     void remove(int amount);  // remove the last n characters from the buffer
     void remove_slice(int start, int end);
     void clear_and_append(String s);
-    void append_many(String* strings, int n);
     void free_buffer();
     void clear();
     String to_string();
@@ -197,23 +199,77 @@ long get_file_size(FILE* file);
 struct File {
 	FILE* handle = nullptr;
 
+    File() {}
     File(FILE* handle) : handle(handle) {}
-	File(String filepath, const char* access) {
+
+	bool open(const char* filepath, const char* access) {
+        if (handle) fclose(handle);
+        handle = fopen(filepath, access);
+        return handle ? true : false;
+	}
+
+	bool open(String filepath, const char* access) {
+        if (handle) fclose(handle);
+
 		SCOPE_STRING(filepath, buffer);
 
 		handle = fopen(buffer, access);
+		return handle ? true : false;
 	}
+
 	~File() {
-		fclose(handle);
+        if (handle)
+        {
+            fclose(handle);
+        }
 	}
 
 	void write_string(String s);
 	void write_number(double n);
 	void write_integer(u64 n);
+	void write_byte(u8 byte);
+	void write_data(BinaryData data);
 
-	String read_string();
-	double read_number();
-	u64 read_integer();
+	String read_string() const;
+	double read_number() const;
+	u64 read_integer() const;
+	int read_byte() const;
+	BinaryData read_data() const;
+};
+
+struct FileText {
+	FILE* handle = nullptr;
+
+    FileText() {}
+    FileText(FILE* handle) : handle(handle) {}
+
+	bool open(const char* filepath, const char* access) {
+        if (handle) fclose(handle);
+
+		handle = fopen(filepath, access);
+		return handle ? true : false;
+	}
+
+	bool open(String filepath, const char* access) {
+        if (handle) fclose(handle);
+
+		SCOPE_STRING(filepath, buffer);
+
+		handle = fopen(buffer, access);
+		return handle ? true : false;
+	}
+
+	~FileText() {
+        if (handle)
+        {
+            fclose(handle);
+        }
+	}
+
+	void write_string(String s, bool nline = false);
+	void write_number(double n, bool nline = false);
+	void write_integer(u64 n, bool nline = false);
+	void write_character(char c);
 };
 
 bool load_file(const char* filepath, BinaryData& bdata);

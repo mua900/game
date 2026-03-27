@@ -17,9 +17,6 @@ struct LightCastContext {
     LineDrawData* draw_data;
 };
 
-// @note beware that the fixed update loop is most likely isn't going to run in the first iteration of the application loop
-// so nothing should be first initialized in fixed update
-
 bool GameState::initialize()
 {
     grid.initialize(100, 100, 100);
@@ -88,15 +85,12 @@ void GameState::update(double elapsed_time, double delta_time, const Input& inpu
 
 void GameState::frame_update(double elapsed_time, double delta_time, const Input& input)
 {
-    /*
     for (auto& object : game_objects)
     {
         switch (object.type)
         {
             case GOT_Wall: { break; }
-            case GOT_Player: {
-                break;
-            }
+            case GOT_Player: { break; }
             case GOT_LaserEmitter: { break; }
             case GOT_LaserCollector: { break; }
             case GOT_Mirror: { break; }
@@ -107,7 +101,8 @@ void GameState::frame_update(double elapsed_time, double delta_time, const Input
             case GOT_EnergySource: { break; }
         }
     }
-    */
+
+    this->frames += 1;
 }
 
 void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
@@ -364,6 +359,26 @@ float playerCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fr
     return 0;
 }
 
+
+// @todo these should be replaced with calls to transform.set/get
+
+void set_object_position(GameObject& object, vec2 pos)
+{
+    switch (object.type)
+    {
+        case GOT_Wall:              { object.wall.transform.set_position(pos); }
+        case GOT_Ball:              { object.ball.transform.set_position(pos); }
+        case GOT_Player:            { object.player.transform.set_position(pos); }
+        case GOT_LaserEmitter:      { object.emitter.transform.set_position(pos); }
+        case GOT_LaserCollector:    { object.collector.transform.set_position(pos); }
+        case GOT_Mirror:            { object.mirror.transform.set_position(pos); }
+        case GOT_LaserReflector:    { object.reflector.transform.set_position(pos); }
+        case GOT_WavelengthShifter: { object.shifter.transform.set_position(pos); }
+        case GOT_LaserSplitter:     { object.splitter.transform.set_position(pos); }
+        case GOT_EnergyGate:        { object.gate.transform.set_position(pos); }
+        case GOT_EnergySource:      { object.source.transform.set_position(pos); }
+    }
+}
 
 vec2 get_object_position(GameObject object)
 {

@@ -3,8 +3,6 @@
 
 #include <cmath>
 
-// namespace lux {
-
 float snap_value(float val, float bound1, float bound2, float threshold);
 
 struct ivec2 {
@@ -154,10 +152,6 @@ struct Rectangle {
         return Rectangle(x - w / 2, y - h / 2, w, h);
     }
 };
-
-// } // namespace lux
-
-// c style macros etc. which make more sense outside the namespace
 
 #define COLOR_WHITE ((Color){0xff,0xff,0xff,0xff})
 #define COLOR_BLACK ((Color){0,0,0,0xff})

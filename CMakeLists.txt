@@ -24,6 +24,7 @@ add_executable(game
     src/math_util.h
     src/math_util.cpp
     src/draw_data.h
+    src/serialize.cpp
 
     src/common.h
     src/common.cpp

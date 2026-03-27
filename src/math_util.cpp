@@ -1,4 +1,5 @@
 #include "math_util.h"
+#include <bit>
 
 float Complex::magnitude() const
 {
@@ -9,7 +10,6 @@ float Complex::winding() const
 {
 	return atan2f(imaginary, real);
 }
-
 
 float snap_value(float val, float bound1, float bound2, float threshold)
 {

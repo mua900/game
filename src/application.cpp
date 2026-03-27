@@ -212,6 +212,17 @@ bool Application::keyboard_input(SDL_KeyboardEvent keyboard)
             quit = true;
             break;
         }
+        case SDL_SCANCODE_S:
+        {
+            if (keyboard.mod & SDL_KMOD_LCTRL)
+            {
+                File file;
+                // @todo decide on an extension
+                file.open("save.ls", "w");
+                serialize_game_state(&game_state, file);
+                log_info("Saved game state to file");
+            }
+        }
     }
 
     return false;

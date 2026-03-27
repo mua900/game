@@ -9,7 +9,7 @@
 
 #include "box2d/box2d.h"
 
-#define PHYSICS_DEBUG 1
+#define PHYSICS_DEBUG 0
 
 enum GameObjectType {
     GOT_Wall,
@@ -23,6 +23,8 @@ enum GameObjectType {
     GOT_LaserSplitter,
     GOT_EnergyGate,
     GOT_EnergySource,
+
+    GOT_Sentinel
 };
 
 // physics collision categories
@@ -45,6 +47,12 @@ struct Transform {
     {
         b2Transform transform = b2Body_GetTransform(body);
         return vec2(transform.p.x, transform.p.y);
+    }
+
+    void set_position(vec2 pos)
+    {
+        b2Transform transform = b2Body_GetTransform(body);
+        b2Body_SetTransform(body, b2Vec2 {pos.x, pos.y}, transform.q);
     }
 
     vec2 get_direction() const
@@ -115,6 +123,7 @@ struct LaserSplitter {
 
 struct EnergySource {
     Transform transform;
+    DrawData draw_data;
 
 	EnergySource(Transform transform) : transform(transform) {}
 };
@@ -128,6 +137,7 @@ struct EnergyGate {
 
 struct Mirror {
     Transform transform;
+    DrawData draw_data;
 
 	Mirror(Transform transform) : transform(transform) {}
 };
@@ -178,6 +188,7 @@ struct GameObject {
 
     GameObject()
     {}
+    GameObject(GameObjectType p_type) : type(p_type) {}
     GameObject(Wall wall)
         : type(GOT_Wall), wall(wall)
     {}
@@ -191,6 +202,7 @@ struct GameObject {
 };
 
 vec2 get_object_position(GameObject object);
+void set_object_position(GameObject& object, vec2 pos);
 
 #define OVERFLOW_CELL_INDEX_SENTINEL -1
 #define CELL_CAPACITY 8
@@ -215,13 +227,13 @@ struct SpatialGrid {
     int calculate_cell_index(vec2 position);
 private:
 
-    // if we want the entries to be unique we would need to check all of them which we can do in a separate function as an opt in way
     void add_to_cell(GridCell& cell, ObjectId object);
     void remove_from_cell(GridCell& cell, ObjectId object);
 };
 
 struct GameState {
     u32 ticks = 0;
+    u32 frames = 0;
 
     BucketList<GameObject> game_objects = {};
     SpatialGrid grid = {};
@@ -249,6 +261,10 @@ struct GameState {
 
     void add_wall(vec2 position, vec2 scale);
 };
+
+// serialization
+bool serialize_game_state(GameState* state, File& file);
+GameState read_game_state(BinaryData& binary_data);
 
 // light update
 void calculate_light();

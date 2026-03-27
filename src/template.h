@@ -326,7 +326,19 @@ struct BucketList {
 		uint16_t occupied_flags;  // at least as many bits as bucket size
 	};
 
+	// due to the fact that the dynamic array can relocate, the pointers are not stable but slot ids are
 	DArray<Bucket> buckets;
+
+	int count() const
+	{
+		int total = 0;
+		for (const auto& bucket : buckets)
+		{
+			total += pop_count(bucket.occupied_flags);
+		}
+
+		return total;
+	}
 
 	int add(const T& elem)
 	{
