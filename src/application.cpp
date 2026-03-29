@@ -13,6 +13,9 @@ bool Application::initialize()
         return false;
     }
 
+    // load test level
+    load_test_level(&game_state);
+
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         SDL_Log("Failed to init SDL: %s\n", SDL_GetError());
         return false;
@@ -222,6 +225,27 @@ bool Application::keyboard_input(SDL_KeyboardEvent keyboard)
                 serialize_game_state(&game_state, file);
                 log_info("Saved game state to file");
             }
+            break;
+        }
+        case SDL_SCANCODE_L:
+        {
+            if (keyboard.mod & SDL_KMOD_LCTRL)
+            {
+                GameState state;
+                File file;
+                file.open("save.ls", "r");
+                if (read_game_state(&state, file))
+                {
+                    game_state = state;
+                    log_info("Read game state");
+                }
+                else
+                {
+                    log_info("Failed to read game state");
+                }
+            }
+
+            break;
         }
     }
 

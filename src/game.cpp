@@ -8,7 +8,7 @@ float playerCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fr
 vec2 get_input_direction(const Input& input);
 
 struct PlayerCastContext {
-    Player* player;
+    Transform* transform;
     double timeStep;
 };
 
@@ -25,41 +25,54 @@ bool GameState::initialize()
     worldDef.gravity = { 0.0f, 0.0f };
     worldId = b2CreateWorld(&worldDef);
 
+    return true;
+}
+
+bool GameState::reinitialize()
+{
+    grid.clear_entries();
+    return true;
+}
+
+void load_test_level(GameState* state)
+{
     const vec2 playerPosition = vec2(500, 500);
     Player player;
-    player.speed = 100;
+    Transform player_transform;
+    DrawData player_draw_data;
     b2Filter playerFilter = make_filter(CategoryPlayer, CategoryStatic | CategoryDynamic | CategoryLight, 0);
-    player.transform.body = make_body_circle(worldId, playerPosition, 10, b2_kinematicBody, playerFilter);
-    player.draw.color = ColorF(0.6, 0.7, 0.6, 1.0);
+    player.speed = 100;
+    player_transform.body = make_body_circle(state->worldId, playerPosition, 10, BodyKinematic, playerFilter);
+    player_draw_data.color = ColorF(0.6, 0.7, 0.6, 1.0);
 
 #if PHYSICS_DEBUG
     for (int i = 0; i < 8; i++)
         player.contacts[i] = {};
     player.contact_count = {};
 #endif
-    GameObject player_object = GameObject(player);
+    GameObject player_object = GameObject(GOT_Player, player_transform, player_draw_data);
+    player_object.data.player = player;
 
-    add_object(player_object);
+    state->add_object(player_object);
 
-    add_wall(vec2(100, 100), vec2(100, 100));
-    add_wall(vec2(400, 400), vec2(400, 100));
+    state->add_wall(vec2(100, 100), vec2(100, 100));
+    state->add_wall(vec2(400, 400), vec2(400, 100));
 
     b2Filter dynamicFilter = make_filter(CategoryDynamic, CategoryPlayer | CategoryStatic | CategoryLight, 1);
 
-    Ball ball;
-    ball.transform.body = make_body_circle(worldId, vec2(400, 100), 30.0, b2_dynamicBody, dynamicFilter);
-    add_object(GameObject(ball));
+    GameObject ball(GOT_Ball);
+    ball.transform = Transform(make_body_circle(state->worldId, vec2(400, 100), 30.0, BodyDynamic, dynamicFilter));
+    state->add_object(GameObject(ball));
     Ball ball2;
-    ball.transform.body = make_body_circle(worldId, vec2(500, 100), 20.0, b2_dynamicBody, dynamicFilter);
-    add_object(GameObject(ball));
+    ball.transform.body = make_body_circle(state->worldId, vec2(500, 100), 20.0, BodyDynamic, dynamicFilter);
+    state->add_object(GameObject(ball));
 
     b2Filter emitter_filter = make_filter(CategoryDynamic, CategoryPlayer | CategoryStatic | CategoryDynamic | CategoryLight, 1);
-    Transform emitter_transform = Transform(make_body_circle(worldId, vec2(600, 600), 10, b2_dynamicBody, emitter_filter));
-    LaserEmitter emitter(emitter_transform);
-    emitter.direction = vec2(0,-1);
-    add_object(GameObject(emitter));
-
-    return true;
+    Transform emitter_transform = Transform(make_body_circle(state->worldId, vec2(600, 600), 10, BodyDynamic, emitter_filter));
+    GameObject emitter_object(GOT_LaserEmitter, emitter_transform);
+    emitter_object.data.emitter.direction = vec2(0,-1);
+    emitter_object.data.emitter.draw_data = {};
+    state->add_object(emitter_object);
 }
 
 void GameState::update(double elapsed_time, double delta_time, const Input& input)
@@ -113,10 +126,10 @@ void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
         {
             case GOT_Wall: { break; }
             case GOT_Player: {
-                Player& player = object.player;
-                vec2 position = player.transform.get_position();
+                Player& player = object.data.player;
+                vec2 position = object.transform.get_position();
                 vec2 velocity = player.speed * get_input_direction(input);
-                player.transform.set_velocity(velocity);
+                object.transform.set_velocity(velocity);
 
                 float velocity_magnitude = velocity.magnitude();
                 if (velocity_magnitude < 1e-6)
@@ -132,7 +145,7 @@ void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
                 b2Vec2 pos = { cast_start.x, cast_start.y };
                 b2Vec2 vel = { velocity.x, velocity.y };
 
-                PlayerCastContext context = { &player, timeStep };
+                PlayerCastContext context = { &object.transform, timeStep };
                 b2World_CastRay( worldId, pos, vel, filter, playerCastResult, &context );
 
 #if PHYSICS_DEBUG
@@ -141,8 +154,8 @@ void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
                 break;
             }
             case GOT_LaserEmitter: {
-                LaserEmitter& emitter = object.emitter;
-                vec2 position = emitter.transform.get_position();
+                LaserEmitter& emitter = object.data.emitter;
+                vec2 position = object.transform.get_position();
                 emitter.draw_data.points.discard_data();
                 emitter.draw_data.points.add(position);
                 calculate_light_beam(worldId, position + emitter.direction * 10, emitter.direction, &emitter.draw_data , 1000);
@@ -166,6 +179,7 @@ void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
 void GameState::cleanup()
 {
     b2DestroyWorld(worldId);
+    grid.cleanup();
 }
 
 int calculate_light_beam(b2WorldId worldId, vec2 start, vec2 dir, LineDrawData* line_draw_data, float range)
@@ -224,20 +238,41 @@ void GameState::add_wall(vec2 position, vec2 scale)
     AABB wallBB;
     wallBB.min = position - scale / 2;
     wallBB.max = position + scale / 2;
-    b2BodyId wall_body = make_body_box(this->worldId, position, scale, b2_staticBody, staticFilter);
-    this->add_object(GameObject(Wall(Transform(wall_body), wallBB)));
+    b2BodyId wall_body = make_body_box(this->worldId, position, scale, BodyStatic, staticFilter);
+    GameObject object = GameObject(GOT_Wall, Transform(wall_body));
+    object.data.wall.bounding_box = wallBB;
+    this->add_object(object);
 }
 
-b2BodyId make_body_box(b2WorldId worldId, vec2 position, vec2 scale, b2BodyType body_type, b2Filter filter)
+b2BodyId make_body(b2WorldId worldId, vec2 pos, BodyType body_type)
 {
     b2BodyDef bodyDef = b2DefaultBodyDef();
-    bodyDef.type = body_type;
-    bodyDef.position = b2Vec2{position.x, position.y};
+    bodyDef.type = b2BodyType(body_type);
+    bodyDef.position = { pos.x, pos.y };
     b2BodyId body = b2CreateBody(worldId, &bodyDef);
+    return body;
+}
+
+b2BodyId make_body_box(b2WorldId worldId, vec2 position, vec2 scale, BodyType body_type, b2Filter filter)
+{
+    b2BodyId body = make_body(worldId, position, body_type);
     b2Polygon polygon = b2MakeBox(scale.x / 2, scale.y / 2);
     b2ShapeDef shapeDef = b2DefaultShapeDef();
     shapeDef.filter = filter;
     b2CreatePolygonShape(body, &shapeDef, &polygon);
+
+    return body;
+}
+
+b2BodyId make_body_circle(b2WorldId worldId, vec2 position, float radius, BodyType body_type, b2Filter filter)
+{
+    b2BodyId body = make_body(worldId, position, body_type);
+
+    b2Circle circle = {};
+    circle.radius = radius;
+    b2ShapeDef shapeDef = b2DefaultShapeDef();
+    shapeDef.filter = filter;
+    b2CreateCircleShape(body, &shapeDef, &circle);
 
     return body;
 }
@@ -249,22 +284,6 @@ b2Filter make_filter(u64 categoryBits, u64 maskBits, int groupIndex)
     filter.maskBits = maskBits;
     filter.groupIndex = groupIndex;
     return filter;
-}
-
-b2BodyId make_body_circle(b2WorldId worldId, vec2 position, float radius, b2BodyType body_type, b2Filter filter)
-{
-    b2BodyDef bodyDef = b2DefaultBodyDef();
-    bodyDef.type = body_type;
-    bodyDef.position = {position.x, position.y};
-    b2BodyId body = b2CreateBody(worldId, &bodyDef);
-
-    b2Circle circle = {};
-    circle.radius = radius;
-    b2ShapeDef shapeDef = b2DefaultShapeDef();
-    shapeDef.filter = filter;
-    b2CreateCircleShape(body, &shapeDef, &circle);
-
-    return body;
 }
 
 void translate_body(b2BodyId body, vec2 translate, double timeStep) {
@@ -330,12 +349,12 @@ float lightCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fra
 float playerCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context )
 {
     PlayerCastContext* castContext = (PlayerCastContext*) context;
-    Player* player = castContext->player;
+    Transform* transform = castContext->transform;
 
-    vec2 position = player->transform.get_position();
+    vec2 position = transform->get_position();
     vec2 normal_vector = vec2(normal.x, normal.y);
     vec2 point_vector = vec2(point.x, point.y);
-    vec2 velocity = player->transform.get_velocity() * castContext->timeStep;
+    vec2 velocity = transform->get_velocity() * castContext->timeStep;
     float speed = velocity.magnitude();
 
     if (speed < 1e-6)
@@ -354,50 +373,20 @@ float playerCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fr
     vec2 reflect = reflect2(velocity, normal_vector).normalized();
 
     velocity += reflect;
-    player->transform.set_velocity(velocity);
+    transform->set_velocity(velocity);
 
     return 0;
 }
 
 
-// @todo these should be replaced with calls to transform.set/get
-
 void set_object_position(GameObject& object, vec2 pos)
 {
-    switch (object.type)
-    {
-        case GOT_Wall:              { object.wall.transform.set_position(pos); }
-        case GOT_Ball:              { object.ball.transform.set_position(pos); }
-        case GOT_Player:            { object.player.transform.set_position(pos); }
-        case GOT_LaserEmitter:      { object.emitter.transform.set_position(pos); }
-        case GOT_LaserCollector:    { object.collector.transform.set_position(pos); }
-        case GOT_Mirror:            { object.mirror.transform.set_position(pos); }
-        case GOT_LaserReflector:    { object.reflector.transform.set_position(pos); }
-        case GOT_WavelengthShifter: { object.shifter.transform.set_position(pos); }
-        case GOT_LaserSplitter:     { object.splitter.transform.set_position(pos); }
-        case GOT_EnergyGate:        { object.gate.transform.set_position(pos); }
-        case GOT_EnergySource:      { object.source.transform.set_position(pos); }
-    }
+    object.transform.set_position(pos);
 }
 
 vec2 get_object_position(GameObject object)
 {
-    switch (object.type)
-    {
-        case GOT_Wall:              { return object.wall.transform.get_position(); }
-        case GOT_Ball:              { return object.ball.transform.get_position(); }
-        case GOT_Player:            { return object.player.transform.get_position(); }
-        case GOT_LaserEmitter:      { return object.emitter.transform.get_position(); }
-        case GOT_LaserCollector:    { return object.collector.transform.get_position(); }
-        case GOT_Mirror:            { return object.mirror.transform.get_position(); }
-        case GOT_LaserReflector:    { return object.reflector.transform.get_position(); }
-        case GOT_WavelengthShifter: { return object.shifter.transform.get_position(); }
-        case GOT_LaserSplitter:     { return object.splitter.transform.get_position(); }
-        case GOT_EnergyGate:        { return object.gate.transform.get_position(); }
-        case GOT_EnergySource:      { return object.source.transform.get_position(); }
-    }
-
-    return vec2(0,0);
+    return object.transform.get_position();
 }
 
 
@@ -418,6 +407,25 @@ void SpatialGrid::initialize(int dim_x, int dim_y, float p_cell_size)
     cell_size = p_cell_size;
 
     cells = new GridCell[dim_x * dim_y];
+}
+
+void SpatialGrid::cleanup()
+{
+    if (cells)
+        delete[] cells;
+}
+
+void SpatialGrid::clear_entries()
+{
+    // why are functions and variables live in the same namespace?
+    int size = this->size();
+    for (int i = 0; i < size; i++)
+    {
+        cells[i].count = 0;
+        cells[i].overflow_cell = 0;
+    }
+
+    overflow_cells.discard_data();
 }
 
 int SpatialGrid::size()

@@ -1,40 +1,7 @@
 #include "game.h"
 
-const char* game_object_type_name(GameObjectType type)
-{
-    switch (type)
-    {
-        case GOT_Wall:              return "Wall";
-        case GOT_Ball:              return "Ball";
-        case GOT_Player:            return "Player";
-        case GOT_LaserEmitter:      return "LaserEmitter";
-        case GOT_LaserCollector:    return "LaserCollector";
-        case GOT_Mirror:            return "Mirror";
-        case GOT_LaserReflector:    return "LaserReflector";
-        case GOT_WavelengthShifter: return "WavelengthShifter";
-        case GOT_LaserSplitter:     return "LaserSplitter";
-        case GOT_EnergyGate:        return "EnergyGate";
-        case GOT_EnergySource:      return "EnergySource";
-        default:                    return "--Unknown--";
-    }
-}
-
-GameObjectType get_game_object_type_from_name(String name)
-{
-    if (name == String("Wall"))                   return GOT_Wall;
-    else if (name == String("Ball"))              return GOT_Ball;
-    else if (name == String("Player"))            return GOT_Player;
-    else if (name == String("LaserEmitter"))      return GOT_LaserEmitter;
-    else if (name == String("LaserCollector"))    return GOT_LaserCollector;
-    else if (name == String("Mirror"))            return GOT_Mirror;
-    else if (name == String("LaserReflector"))    return GOT_LaserReflector;
-    else if (name == String("WavelengthShifter")) return GOT_WavelengthShifter;
-    else if (name == String("LaserSplitter"))     return GOT_LaserSplitter;
-    else if (name == String("EnergyGate"))        return GOT_EnergyGate;
-    else if (name == String("EnergySource"))      return GOT_EnergySource;
-    else if (name == String("--Unknown--"))       return GOT_Sentinel;  // we know it's written by us
-    else                                          return GOT_Sentinel;  // random garbage
-}
+const char* game_object_type_name(GameObjectType type);
+GameObjectType get_game_object_type_from_name(String name);
 
 static const int Version_Number = 0;
 static const char* Magic = "LB";
@@ -62,6 +29,8 @@ bool serialize_game_state(GameState* state, File& file)
         file.write_number(index);
 
         file.write_string(String(name));
+        BodyType body_type = object.transform.get_body_type();
+        file.write_number(body_type);
         file.write_number(position.x);
         file.write_number(position.y);
 
@@ -89,6 +58,8 @@ bool serialize_game_state(GameState* state, File& file)
 bool read_game_state(GameState* state, File& file)
 {
     if (!file.handle) return false;
+
+    state->initialize();
 
     int magic_high = file.read_byte();
     int magic_low  = file.read_byte();
@@ -132,6 +103,13 @@ bool read_game_state(GameState* state, File& file)
 
         GameObject game_object(type);
 
+        u64 bt = file.read_integer();
+        if (bt == BodyStatic || bt == BodyKinematic || bt == BodyDynamic)
+        {
+            return false;
+        }
+        BodyType body_type ((BodyType)bt);
+
         float xcoord = file.read_number();
         float ycoord = file.read_number();
         if (!(std::isfinite(xcoord) && std::isfinite(ycoord)))
@@ -139,7 +117,7 @@ bool read_game_state(GameState* state, File& file)
             return false;
         }
 
-        set_object_position(game_object, vec2(xcoord, ycoord));
+        game_object.transform = make_body(state->worldId, vec2(xcoord, ycoord), body_type);
 
         switch (type)
         {
@@ -159,8 +137,44 @@ bool read_game_state(GameState* state, File& file)
         objects.add(game_object);
     }
 
-    state->initialize();
     state->game_objects = std::move(objects);
 
     return true;
+}
+
+
+const char* game_object_type_name(GameObjectType type)
+{
+    switch (type)
+    {
+        case GOT_Wall:              return "Wall";
+        case GOT_Ball:              return "Ball";
+        case GOT_Player:            return "Player";
+        case GOT_LaserEmitter:      return "LaserEmitter";
+        case GOT_LaserCollector:    return "LaserCollector";
+        case GOT_Mirror:            return "Mirror";
+        case GOT_LaserReflector:    return "LaserReflector";
+        case GOT_WavelengthShifter: return "WavelengthShifter";
+        case GOT_LaserSplitter:     return "LaserSplitter";
+        case GOT_EnergyGate:        return "EnergyGate";
+        case GOT_EnergySource:      return "EnergySource";
+        default:                    return "--Unknown--";
+    }
+}
+
+GameObjectType get_game_object_type_from_name(String name)
+{
+    if (name == String("Wall"))                   return GOT_Wall;
+    else if (name == String("Ball"))              return GOT_Ball;
+    else if (name == String("Player"))            return GOT_Player;
+    else if (name == String("LaserEmitter"))      return GOT_LaserEmitter;
+    else if (name == String("LaserCollector"))    return GOT_LaserCollector;
+    else if (name == String("Mirror"))            return GOT_Mirror;
+    else if (name == String("LaserReflector"))    return GOT_LaserReflector;
+    else if (name == String("WavelengthShifter")) return GOT_WavelengthShifter;
+    else if (name == String("LaserSplitter"))     return GOT_LaserSplitter;
+    else if (name == String("EnergyGate"))        return GOT_EnergyGate;
+    else if (name == String("EnergySource"))      return GOT_EnergySource;
+    else if (name == String("--Unknown--"))       return GOT_Sentinel;  // we know it's written by us
+    else                                          return GOT_Sentinel;  // random garbage
 }

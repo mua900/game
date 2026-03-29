@@ -8,7 +8,7 @@ void draw_game(RenderContext context, const GameState& state)
         {
             case GOT_Wall:
             {
-                const Wall& wall = object.wall;
+                const Wall& wall = object.data.wall;
                 float width = wall.bounding_box.max.x - wall.bounding_box.min.x;
                 float height = wall.bounding_box.max.y - wall.bounding_box.min.y;
                 Rectangle box = Rectangle(wall.bounding_box.min.x + width / 2, wall.bounding_box.min.y + height / 2, width, height);
@@ -17,9 +17,9 @@ void draw_game(RenderContext context, const GameState& state)
             }
             case GOT_Player:
             {
-                const Player& player = object.player;
-                vec2 position = player.transform.get_position();
-                draw_circle(context.renderer, position, 20.0, player.draw.color);
+                const Player& player = object.data.player;
+                vec2 position = object.transform.get_position();
+                draw_circle(context.renderer, position, 20.0, object.draw.color);
 #if PHYSICS_DEBUG
                 for (int i = 0; i < player.contact_count; i++)
                 {
@@ -35,17 +35,17 @@ void draw_game(RenderContext context, const GameState& state)
             }
             case GOT_Ball:
             {
-                const Ball& ball = object.ball;
-                vec2 position = ball.transform.get_position();
-                b2ShapeId shape = ball.transform.get_shape();
+                const Ball& ball = object.data.ball;
+                vec2 position = object.transform.get_position();
+                b2ShapeId shape = object.transform.get_shape();
                 b2Circle circle = b2Shape_GetCircle(shape);
                 draw_circle(context.renderer, position, circle.radius, ColorF(0.5, 0.5, 0.5, 1.0));
                 break;
             }
             case GOT_LaserEmitter:
             {
-                const LaserEmitter& emitter = object.emitter;
-                vec2 pos = emitter.transform.get_position();
+                const LaserEmitter& emitter = object.data.emitter;
+                vec2 pos = object.transform.get_position();
                 draw_circle(context.renderer, pos, 10, ColorF(0.9, 0.4, 0.3, 1.0));
                 draw_lines(context, emitter.draw_data.points.to_array(), 10, ColorF(1,0,0,1));
                 break;

@@ -27,6 +27,12 @@ enum GameObjectType {
     GOT_Sentinel
 };
 
+enum BodyType {
+    BodyStatic = b2_staticBody,
+    BodyKinematic = b2_kinematicBody,
+    BodyDynamic = b2_dynamicBody,
+};
+
 // physics collision categories
 enum GameCollisionCategories {
     CategoryPlayer   = 0x01,
@@ -42,6 +48,12 @@ struct Transform {
 
     Transform() {}
     Transform(b2BodyId body) : body(body) {}
+
+    BodyType get_body_type() const
+    {
+        b2BodyType type = b2Body_GetType(body);
+        return BodyType(type);
+    }
 
     vec2 get_position() const
     {
@@ -85,74 +97,62 @@ struct AABB {
 };
 
 struct LaserCollector {
-    Transform transform;
 
-	LaserCollector(Transform transform) : transform(transform) {}
+	LaserCollector() {}
 };
 
 struct LaserEmitter {
-    Transform transform;
     vec2 direction;
     LineDrawData draw_data;
 
-	LaserEmitter(Transform transform) : transform(transform) {}
+	LaserEmitter() {}
 };
 
 struct LaserReflector {
-    Transform transform;
-	LaserEmitter* source = nullptr;
-	LaserCollector* target = nullptr;
+	ObjectId source;
+	ObjectId target;
 
-	LaserReflector(Transform transform, LaserEmitter* src, LaserCollector* dst) : transform(transform), source(src), target(dst) {}
+	LaserReflector(ObjectId src, ObjectId dst) : source(src), target(dst) {}
 };
 
 struct WavelengthShifter {
-    Transform transform;
 	float shift;
 
-	WavelengthShifter(Transform transform, float shift) : transform(transform), shift(shift) {}
+	WavelengthShifter(float shift) : shift(shift) {}
 };
 
 struct LaserSplitter {
-    Transform transform;
 	float scatter;
 	int nbeams;
 
-	LaserSplitter(Transform transform, float scat, int beam_count) : transform(transform), scatter(scat), nbeams(beam_count) {}
+	LaserSplitter(float scat, int beam_count) : scatter(scat), nbeams(beam_count) {}
 };
 
 struct EnergySource {
-    Transform transform;
-    DrawData draw_data;
 
-	EnergySource(Transform transform) : transform(transform) {}
+	EnergySource() {}
 };
 
 struct EnergyGate {
-    Transform transform;
-	EnergySource* source = nullptr;
+	ObjectId energy_source;
 
-	EnergyGate(Transform transform) : transform(transform) {}
+	EnergyGate() {}
 };
 
 struct Mirror {
-    Transform transform;
-    DrawData draw_data;
 
-	Mirror(Transform transform) : transform(transform) {}
+	Mirror() {}
 };
 
 struct Ball {
-    Transform transform;
+    Ball() {}
 };
 
-// static world geometry
 struct Wall {
-    Transform transform;
     AABB bounding_box;
 
-    Wall(Transform tr, AABB bb)
-        : transform(tr), bounding_box(bb)
+    Wall(AABB bb)
+        : bounding_box(bb)
     {}
 };
 
@@ -163,42 +163,37 @@ struct Player {
 #endif
 
     float speed;
-    Transform transform;
-    DrawData draw;
 
     Player() {}
 };
 
-struct GameObject {
-    GameObjectType type;
+union ObjectData {
+    Player player;
+    Wall wall;
+    Ball ball;
+    LaserEmitter emitter;
+    LaserCollector collector;
+    Mirror mirror;
+    LaserReflector reflector;
+    EnergyGate gate;
+    EnergySource source;
+    WavelengthShifter shifter;
+    LaserSplitter splitter;
+};
 
-    union {
-        Player player;
-        Wall wall;
-        Ball ball;
-        LaserEmitter emitter;
-        LaserCollector collector;
-        Mirror mirror;
-        LaserReflector reflector;
-        EnergyGate gate;
-        EnergySource source;
-        WavelengthShifter shifter;
-        LaserSplitter splitter;
-    };
+struct GameObject {
+    GameObjectType type = {};
+    Transform transform = {};
+    DrawData draw = {};
+    ObjectData data = {};
 
     GameObject()
     {}
     GameObject(GameObjectType p_type) : type(p_type) {}
-    GameObject(Wall wall)
-        : type(GOT_Wall), wall(wall)
+    GameObject(GameObjectType p_type, Transform tr) : type(p_type), transform(tr)
     {}
-    GameObject(Ball ball)
-        : type(GOT_Ball), ball(ball)
+    GameObject(GameObjectType p_type, Transform tr, DrawData draw_data) : type(p_type), transform(tr), draw(draw_data)
     {}
-    GameObject(Player& player)
-        : type(GOT_Player), player(player)
-    {}
-    GameObject(LaserEmitter& emitter) : type(GOT_LaserEmitter), emitter(emitter)  {}
 };
 
 vec2 get_object_position(GameObject object);
@@ -220,6 +215,8 @@ struct SpatialGrid {
     DArray<GridCell> overflow_cells;
 
     void initialize(int dim_x, int dim_y, float p_cell_size);
+    void cleanup();
+    void clear_entries();
     int size();
     void add(vec2 position, ObjectId object);
     void remove(vec2 position, int object);
@@ -241,6 +238,7 @@ struct GameState {
     b2WorldId worldId = {};
 
     bool initialize();
+    bool reinitialize();
     void cleanup();
     void update(double elapsed_time, double delta_time, const Input& input);
     void frame_update(double elapsed_time, double delta_time, const Input& input);
@@ -262,9 +260,11 @@ struct GameState {
     void add_wall(vec2 position, vec2 scale);
 };
 
+void load_test_level(GameState* state);
+
 // serialization
 bool serialize_game_state(GameState* state, File& file);
-GameState read_game_state(BinaryData& binary_data);
+bool read_game_state(GameState* state, File& file);
 
 // light update
 void calculate_light();
@@ -272,8 +272,9 @@ int calculate_light_beam(b2WorldId worldId, vec2 start, vec2 dir, LineDrawData* 
 
 b2Filter make_filter(u64 categoryBits, u64 maskBits, int groupIndex);
 
-b2BodyId make_body_box(b2WorldId worldId, vec2 position, vec2 scale, b2BodyType body_type, b2Filter filter);
-b2BodyId make_body_circle(b2WorldId worldId, vec2 position, float radius, b2BodyType body_type, b2Filter filter);
+b2BodyId make_body(b2WorldId worldId, vec2 pos, BodyType body_type);
+b2BodyId make_body_box(b2WorldId worldId, vec2 position, vec2 scale, BodyType body_type, b2Filter filter);
+b2BodyId make_body_circle(b2WorldId worldId, vec2 position, float radius, BodyType body_type, b2Filter filter);
 
 void translate(vec2& pos, vec2 translate, b2BodyId body = b2_nullBodyId);
 void rotate(vec2& direction, float amount, b2BodyId body = b2_nullBodyId);

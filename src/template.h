@@ -4,7 +4,7 @@
 
 template <typename T>
 struct Array {
-	T* data = NULL;
+	T* data = nullptr;
 	int size = 0;
 
 	Array() {}
@@ -311,7 +311,8 @@ private:
 		{
 			ndata[i] = std::move(m_data[i]);
 		}
-		delete[](m_data);
+		if (m_data)
+			delete[](m_data);
 		m_data = ndata;
 		m_cap = ncap;
 	}
