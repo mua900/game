@@ -8,6 +8,7 @@
 #include "input.h"
 #include "draw.h"
 #include "asset.h"
+#include "serialize.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>

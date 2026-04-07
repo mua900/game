@@ -65,7 +65,7 @@ bool Application::initialize()
     }
 
     if (!read_asset_catalog()) {
-        log_error("Could not load assets\n");
+        log_error("Could not read asset catalog\n");
         return false;
     }
 

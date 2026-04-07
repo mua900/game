@@ -260,6 +260,10 @@ void File::write_byte(u8 byte) {
     fwrite(&byte, 1, 1, handle);
 }
 
+void File::write_int(s32 n) {
+    fwrite(&n, sizeof(n), 1, handle);
+}
+
 void File::write_integer(u64 n) {
 	fwrite(&n, sizeof(n), 1, handle);
 }
@@ -280,6 +284,12 @@ double File::read_number() const {
 	double n = 0;
 	fread(&n, sizeof(n), 1, handle);
 	return n;
+}
+
+s32 File::read_int() const {
+    s32 n = 0;
+    fread(&n, sizeof(n), 1, handle);
+    return n;
 }
 
 u64 File::read_integer() const {

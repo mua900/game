@@ -8,8 +8,10 @@ struct DrawData {
     DrawData(ColorF color) : color(color) {}
 };
 
+#define LINE_DRAW_DATA_MAX_POINTS 8
 struct LineDrawData {
-    DArray<vec2> points;
+    int point_count = 0;
+    vec2 points[LINE_DRAW_DATA_MAX_POINTS];
 };
 
 #endif // _DRAW_DATA_H

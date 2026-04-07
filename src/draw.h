@@ -33,6 +33,6 @@ void draw_rounded_polygon(RenderContext context, Array<vec2> corners, float radi
 void draw_capsule(SDL_Renderer* renderer, vec2 center0, vec2 center1, float radius, ColorF color);
 void draw_circle(SDL_Renderer* renderer, vec2 position, float radius, ColorF color);
 void draw_segment(SDL_Renderer* renderer, vec2 start, vec2 end, float thick, ColorF color);
-void draw_lines(RenderContext context, Array<vec2> points, float thickness, ColorF color);
+void draw_lines(RenderContext context, Array<const vec2> points, float thickness, ColorF color);
 
 #endif // _DRAW_H

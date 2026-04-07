@@ -47,7 +47,7 @@ void draw_game(RenderContext context, const GameState& state)
                 const LaserEmitter& emitter = object.data.emitter;
                 vec2 pos = object.transform.get_position();
                 draw_circle(context.renderer, pos, 10, ColorF(0.9, 0.4, 0.3, 1.0));
-                draw_lines(context, emitter.draw_data.points.to_array(), 10, ColorF(1,0,0,1));
+                draw_lines(context, make_const_array(emitter.draw_data.points), 10, ColorF(1,0,0,1));
                 break;
             }
         }
@@ -390,7 +390,7 @@ void draw_capsule(SDL_Renderer* renderer, vec2 center0, vec2 center1, float radi
     #undef NVERTICES
 }
 
-void draw_lines(RenderContext context, Array<vec2> points, float thickness, ColorF color)
+void draw_lines(RenderContext context, Array<const vec2> points, float thickness, ColorF color)
 {
     if (points.size < 2) return;
 

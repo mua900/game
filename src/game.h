@@ -33,6 +33,13 @@ enum BodyType {
     BodyDynamic = b2_dynamicBody,
 };
 
+enum ShapeType {
+	ShapeCircle = b2_circleShape,
+	ShapeCapsule = b2_capsuleShape,
+	ShapeSegment = b2_segmentShape,
+	ShapePolygon = b2_polygonShape,
+};
+
 // physics collision categories
 enum GameCollisionCategories {
     CategoryPlayer   = 0x01,
@@ -262,10 +269,6 @@ struct GameState {
 
 void load_test_level(GameState* state);
 
-// serialization
-bool serialize_game_state(GameState* state, File& file);
-bool read_game_state(GameState* state, File& file);
-
 // light update
 void calculate_light();
 int calculate_light_beam(b2WorldId worldId, vec2 start, vec2 dir, LineDrawData* castContext, float range);
@@ -275,6 +278,12 @@ b2Filter make_filter(u64 categoryBits, u64 maskBits, int groupIndex);
 b2BodyId make_body(b2WorldId worldId, vec2 pos, BodyType body_type);
 b2BodyId make_body_box(b2WorldId worldId, vec2 position, vec2 scale, BodyType body_type, b2Filter filter);
 b2BodyId make_body_circle(b2WorldId worldId, vec2 position, float radius, BodyType body_type, b2Filter filter);
+
+void make_shape_box(b2BodyId body, vec2 scale,b2Filter filter);
+void make_shape_circle(b2BodyId body, vec2 position, float radius, b2Filter filter);
+void make_shape_capsule(b2BodyId body, vec2 center1, vec2 center2, float radius, b2Filter filter);
+void make_shape_segment(b2BodyId body, vec2 p1, vec2 p2, b2Filter filter);
+void make_shape_polygon(b2BodyId body, vec2* vertices, int num_vertices, b2Filter filter);
 
 void translate(vec2& pos, vec2 translate, b2BodyId body = b2_nullBodyId);
 void rotate(vec2& direction, float amount, b2BodyId body = b2_nullBodyId);

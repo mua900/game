@@ -78,6 +78,11 @@ Array<T> make_array(T (&arr)[N]) {
 	return Array<T>(arr, N);
 }
 
+template<typename T, int N>
+Array<const T> make_const_array(const T (&arr)[N]) {
+	return Array<const T>(arr, N);
+}
+
 template <typename T>
 struct DArray {
 private:

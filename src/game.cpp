@@ -156,8 +156,9 @@ void GameState::fixed_update(u32 tick, double timeStep, const Input& input)
             case GOT_LaserEmitter: {
                 LaserEmitter& emitter = object.data.emitter;
                 vec2 position = object.transform.get_position();
-                emitter.draw_data.points.discard_data();
-                emitter.draw_data.points.add(position);
+                emitter.draw_data.point_count = 0;
+                emitter.draw_data.points[emitter.draw_data.point_count] = position;
+                emitter.draw_data.point_count += 1;
                 calculate_light_beam(worldId, position + emitter.direction * 10, emitter.direction, &emitter.draw_data , 1000);
                 break;
             }
@@ -193,7 +194,7 @@ int calculate_light_beam(b2WorldId worldId, vec2 start, vec2 dir, LineDrawData* 
 
     LightCastContext context = { start, line_draw_data };
     b2World_CastRay( worldId, pos, end, filter, lightCastResult, &context );
-    return context.draw_data->points.size();
+    return context.draw_data->point_count;
 }
 
 vec2 get_input_direction(const Input& input)
@@ -244,6 +245,60 @@ void GameState::add_wall(vec2 position, vec2 scale)
     this->add_object(object);
 }
 
+void make_shape_box(b2BodyId body, vec2 scale, BodyType body_type, b2Filter filter)
+{
+    b2Polygon polygon = b2MakeBox(scale.x / 2, scale.y / 2);
+    b2ShapeDef shapeDef = b2DefaultShapeDef();
+    shapeDef.filter = filter;
+    b2CreatePolygonShape(body, &shapeDef, &polygon);
+}
+
+void make_shape_circle(b2BodyId body, vec2 position, float radius, b2Filter filter)
+{
+    b2Circle circle = {};
+    circle.center = { position.x, position.y };
+    circle.radius = radius;
+    b2ShapeDef shapeDef = b2DefaultShapeDef();
+    shapeDef.filter = filter;
+    b2CreateCircleShape(body, &shapeDef, &circle);
+}
+
+void make_shape_capsule(b2BodyId body, vec2 center1, vec2 center2, float radius, b2Filter filter)
+{
+    b2Capsule capsule = {};
+    capsule.center1 = { center1.x, center1.y };
+    capsule.center2 = { center2.x, center2.y };
+    capsule.radius = radius;
+    b2ShapeDef shapeDef = b2DefaultShapeDef();
+    shapeDef.filter = filter;
+    b2CreateCapsuleShape(body, &shapeDef, &capsule);
+}
+
+void make_shape_segment(b2BodyId body, vec2 p1, vec2 p2, b2Filter filter)
+{
+    b2Segment segment = {};
+    segment.point1 = { p1.x, p1.y };
+    segment.point2 = { p2.x, p2.y };
+    b2ShapeDef shapeDef = b2DefaultShapeDef();
+    shapeDef.filter = filter;
+    b2CreateSegmentShape(body, &shapeDef, &segment);
+}
+
+void make_shape_polygon(b2BodyId body, vec2* vertices, int num_vertices, b2Filter filter)
+{
+    b2Hull hull = b2ComputeHull( (b2Vec2*) vertices, num_vertices);
+    if (!b2ValidateHull(&hull))
+    {
+        // @todo
+        return;
+    }
+
+    b2Polygon polygon = b2MakePolygon(&hull, 0);
+    b2ShapeDef shapeDef = b2DefaultShapeDef();
+    shapeDef.filter = filter;
+    b2CreatePolygonShape(body, &shapeDef, &polygon);
+}
+
 b2BodyId make_body(b2WorldId worldId, vec2 pos, BodyType body_type)
 {
     b2BodyDef bodyDef = b2DefaultBodyDef();
@@ -256,24 +311,14 @@ b2BodyId make_body(b2WorldId worldId, vec2 pos, BodyType body_type)
 b2BodyId make_body_box(b2WorldId worldId, vec2 position, vec2 scale, BodyType body_type, b2Filter filter)
 {
     b2BodyId body = make_body(worldId, position, body_type);
-    b2Polygon polygon = b2MakeBox(scale.x / 2, scale.y / 2);
-    b2ShapeDef shapeDef = b2DefaultShapeDef();
-    shapeDef.filter = filter;
-    b2CreatePolygonShape(body, &shapeDef, &polygon);
-
+    make_shape_box(body, scale, body_type, filter);
     return body;
 }
 
 b2BodyId make_body_circle(b2WorldId worldId, vec2 position, float radius, BodyType body_type, b2Filter filter)
 {
     b2BodyId body = make_body(worldId, position, body_type);
-
-    b2Circle circle = {};
-    circle.radius = radius;
-    b2ShapeDef shapeDef = b2DefaultShapeDef();
-    shapeDef.filter = filter;
-    b2CreateCircleShape(body, &shapeDef, &circle);
-
+    make_shape_circle(body, vec2(0,0), radius, filter);
     return body;
 }
 
@@ -341,7 +386,8 @@ float lightCastResult( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fra
     if (len < 1e-1)
         return -1;
 
-    castContext->draw_data->points.add(p);
+    castContext->draw_data->points[castContext->draw_data->point_count] = p;
+    castContext->draw_data->point_count += 1;
 
     return 1;
 }

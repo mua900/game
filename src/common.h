@@ -129,7 +129,6 @@ struct String {
 
 #define STRING_EMPTY ((String){.data=NULL,.size=0})
 #define CSTRING_LENGTH(s) (sizeof(s)-1)
-#define MAKE_STRING(s) (String){.data=s,.size=CSTRING_LENGTH(s)}  // not used
 
 #define SCOPE_STRING_EXP(p_s, p_name, p_size)				\
 	char p_name[p_size];  \
@@ -227,12 +226,14 @@ struct File {
 	void write_string(String s);
 	void write_number(double n);
 	void write_integer(u64 n);
+	void write_int(s32 n);
 	void write_byte(u8 byte);
 	void write_data(BinaryData data);
 
 	String read_string() const;
 	double read_number() const;
 	u64 read_integer() const;
+	s32 read_int() const;
 	int read_byte() const;
 	BinaryData read_data() const;
 };
